@@ -49,10 +49,17 @@ const priceFilterRanges = [
     { label: "~2500円", min: 1501, max: 2500 },
     { label: "~5000円", min: 2501, max: 5000 }
 ];
+const numberOfPeopleOptions = [
+    { label: "~1人", value: 1 },
+    { label: "~2人", value: 2 },
+    { label: "~3人", value: 3 },
+    { label: "~4人", value: 4 }
+];
+
 const initialStoresData = [
-    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。' },
-    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。' },
-    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。' },
+    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2 },
+    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4 },
+    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3 },
 ];
 
 // --- メインアプリケーションコンポーネント ---
@@ -185,9 +192,11 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     const [idFilterModalOpen, setIdFilterModalOpen] = useState(false);
     const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
     const [priceFilterModalOpen, setPriceFilterModalOpen] = useState(false);
+    const [numberOfPeopleModalOpen, setNumberOfPeopleModalOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [selectedPriceRange, setSelectedPriceRange] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [selectedNumberOfPeople, setSelectedNumberOfPeople] = useState(null);
     const [allStores, setAllStores] = useState([]);
     const [searchTerm, setSearchTerm] = useState(''); // 検索キーワード用のstate
 
@@ -238,9 +247,10 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         if (selectedGroup) stores = stores.filter(s => s.group === selectedGroup);
         if (selectedPriceRange) stores = stores.filter(s => s.initialPriceMin >= selectedPriceRange.min && s.initialPriceMin <= selectedPriceRange.max);
         if (selectedIds.length > 0) stores = stores.filter(s => selectedIds.every(id => s.requiredIds.includes(id)));
+        if (selectedNumberOfPeople) stores = stores.filter(s => s.numberOfPeople <= selectedNumberOfPeople.value);
         if (listFilter !== 'visited') stores.sort((a,b) => (a.status === 'unwanted') - (b.status === 'unwanted'));
         return stores;
-    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm]);
+    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople]);
 
     return (
         <div className="pb-28">
@@ -263,12 +273,13 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                     <button onClick={() => setGroupFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedGroup ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>グループ{selectedGroup ? ` (${selectedGroup.substring(0, 10)}${selectedGroup.length > 10 ? '…' : ''})` : ''}</button>
                     <button onClick={() => setPriceFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedPriceRange ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>料金{selectedPriceRange ? ` (${selectedPriceRange.label})` : ''}</button>
                     <button onClick={() => setIdFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedIds.length > 0 ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>身分証{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}</button>
+                    <button onClick={() => setNumberOfPeopleModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedNumberOfPeople ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>人数{selectedNumberOfPeople ? ` (${selectedNumberOfPeople.label})` : ''}</button>
                 </div>
             </header>
             <main className="p-4 space-y-3">
                 {filteredStores.map(store => (
                     <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' ? 'opacity-40' : ''}`}>
-                        <div className="grow" onClick={() => store.status === 'active' && navigateTo('detail', store.id)}><h2 className="text-lg font-bold">{store.name}</h2><p className="text-gray-400 text-sm">{store.group} / {store.initialPriceText}</p><div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div></div>
+                        <div className="grow" onClick={() => store.status === 'active' && navigateTo('detail', store.id)}><h2 className="text-lg font-bold">{store.name}</h2><p className="text-gray-400 text-sm">{store.group} / {store.initialPriceText} / ~{store.numberOfPeople}人</p><div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div></div>
                         {store.status === 'active' && (<button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="ml-4 bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>)}
                          {store.status === 'unwanted' && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg"><span className="text-white text-xl font-bold transform -rotate-12">行きたくない</span></div>)}
                     </div>
@@ -278,6 +289,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
             {idFilterModalOpen && <IdSelectionModal currentSelected={selectedIds} onClose={() => setIdFilterModalOpen(false)} onApply={setSelectedIds} />}
             {groupFilterModalOpen && <GroupSelectionModal groups={allGroups} onClose={() => setGroupFilterModalOpen(false)} onSelect={(group) => { setSelectedGroup(group); setGroupFilterModalOpen(false); }} />}
             {priceFilterModalOpen && <PriceSelectionModal onClose={() => setPriceFilterModalOpen(false)} onSelect={(range) => { setSelectedPriceRange(range); setPriceFilterModalOpen(false); }} />}
+            {numberOfPeopleModalOpen && <NumberOfPeopleSelectionModal onClose={() => setNumberOfPeopleModalOpen(false)} onSelect={(option) => { setSelectedNumberOfPeople(option); setNumberOfPeopleModalOpen(false); }} />}
         </div>
     );
 }
@@ -314,7 +326,7 @@ function StoreDetailScreen({ storeId, navigateTo }) {
             <button onClick={() => navigateTo('list')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />一覧に戻る</button>
             <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
             <main className="space-y-6">
-                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>初回料金:</strong> {store.initialPriceText}</li><li><strong>バック料金:</strong> {store.backCharge}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>店舗の雰囲気:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
+                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>初回料金:</strong> {store.initialPriceText}</li><li><strong>バック料金:</strong> {store.backCharge}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>店舗の雰囲気:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
                 <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
                 <div className="bg-gray-800 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-700 p-3 rounded">{memo}</p></div>)}</div>
             </main>
@@ -562,7 +574,7 @@ function AdminStoresScreen({ navigateTo }) {
 }
 
 function AdminStoreEditScreen({ store, navigateTo }) {
-    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '' });
+    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1 });
     const [hasPriceRange, setHasPriceRange] = useState(false);
     const [toast, setToast] = useState('');
 
@@ -576,7 +588,8 @@ function AdminStoreEditScreen({ store, navigateTo }) {
                 tags: store.tags.join(', '), 
                 requiredIds: store.requiredIds || [],
                 initialPriceMin: store.initialPriceMin || '',
-                initialPriceMax: isRange ? (store.initialPriceMax || '') : ''
+                initialPriceMax: isRange ? (store.initialPriceMax || '') : '',
+                numberOfPeople: store.numberOfPeople || 1
             });
         }
     }, [store]);
@@ -603,6 +616,7 @@ function AdminStoreEditScreen({ store, navigateTo }) {
             initialPriceMax: maxPrice,
             initialPriceText: hasPriceRange ? `${maxPrice}円※` : `${minPrice}円`,
             tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
+            numberOfPeople: Number(formData.numberOfPeople) || 1
         };
         
         try {
@@ -648,6 +662,14 @@ function AdminStoreEditScreen({ store, navigateTo }) {
 
                 <div><label className="text-sm text-gray-400">バック料金</label><input type="text" name="backCharge" value={formData.backCharge} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
                 <div><label className="text-sm text-gray-400">タグ (カンマ区切り)</label><input type="text" name="tags" value={formData.tags} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div>
+                    <label className="text-sm text-gray-400">人数</label>
+                    <select name="numberOfPeople" value={formData.numberOfPeople} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1">
+                        {numberOfPeopleOptions.map(option => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                    </select>
+                </div>
                 <div>
                     <label className="text-sm text-gray-400">必須身分証</label>
                     <div className="grid grid-cols-2 gap-2 mt-2">
@@ -748,6 +770,20 @@ function PriceSelectionModal({ onClose, onSelect }) {
                 <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
                     <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての料金</button>
                     {priceFilterRanges.map(range => (<button key={range.label} onClick={() => onSelect(range)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{range.label}</button>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function NumberOfPeopleSelectionModal({ onClose, onSelect }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">人数を選択</h3></div>
+                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
+                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての人数</button>
+                    {numberOfPeopleOptions.map(option => (<button key={option.label} onClick={() => onSelect(option)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{option.label}</button>))}
                 </div>
             </div>
         </div>
