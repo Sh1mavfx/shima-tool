@@ -45,11 +45,11 @@ const storeCollectionPath = `artifacts/${appId}/public/data/stores`;
 const idTypes = ["運転免許証", "マイナンバー", "パスポート", "保険証", "キャッシュカード", "クレジットカード"];
 const priceFilterRanges = [
     { label: "無料", min: 0, max: 0 },
-    { label: "~500円", min: 1, max: 500 },
-    { label: "~1000円", min: 501, max: 1000 },
-    { label: "~1500円", min: 1001, max: 1500 },
-    { label: "~2500円", min: 1501, max: 2500 },
-    { label: "~5000円", min: 2501, max: 5000 }
+    { label: "~1000円", min: 1, max: 1000 },
+    { label: "~2000円", min: 1001, max: 2000 },
+    { label: "~3000円", min: 2001, max: 3000 },
+    { label: "~5000円", min: 3001, max: 5000 },
+    { label: "~10000円", min: 5001, max: 10000 }
 ];
 const numberOfPeopleOptions = [
     { label: "~1人", value: 1 },
