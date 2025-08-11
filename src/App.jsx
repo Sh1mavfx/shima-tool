@@ -16,6 +16,8 @@ const Shield = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" h
 const Edit = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> );
 const PlusCircle = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> );
 const Trash2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> );
+const User = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> );
+const Smartphone = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> );
 
 
 // --- Firebaseの初期設定 ---
@@ -57,9 +59,9 @@ const numberOfPeopleOptions = [
 ];
 
 const initialStoresData = [
-    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2 },
-    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4 },
-    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3 },
+    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2, locationType: 'walk', contactType: 'phone' },
+    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4, locationType: 'house', contactType: 'phone' },
+    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3, locationType: 'walk', contactType: 'none' },
 ];
 
 // --- メインアプリケーションコンポーネント ---
@@ -279,7 +281,15 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
             <main className="p-4 space-y-3">
                 {filteredStores.map(store => (
                     <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' ? 'opacity-40' : ''}`}>
-                        <div className="grow" onClick={() => store.status === 'active' && navigateTo('detail', store.id)}><h2 className="text-lg font-bold">{store.name}</h2><p className="text-gray-400 text-sm">{store.group} / {store.initialPriceText} / ~{store.numberOfPeople}人</p><div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div></div>
+                        <div className="grow" onClick={() => store.status === 'active' && navigateTo('detail', store.id)}>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-lg font-bold">{store.name}</h2>
+                                {store.locationType === 'walk' ? <User className="w-5 h-5" /> : <Home className="w-5 h-5" />}
+                                {store.contactType === 'phone' ? <Smartphone className="w-5 h-5" /> : <X className="w-5 h-5" />}
+                            </div>
+                            <p className="text-gray-400 text-sm">{store.group} / {store.initialPriceText} / ~{store.numberOfPeople}人</p>
+                            <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
+                        </div>
                         {store.status === 'active' && (<button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="ml-4 bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>)}
                          {store.status === 'unwanted' && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg"><span className="text-white text-xl font-bold transform -rotate-12">行きたくない</span></div>)}
                     </div>
@@ -326,7 +336,7 @@ function StoreDetailScreen({ storeId, navigateTo }) {
             <button onClick={() => navigateTo('list')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />一覧に戻る</button>
             <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
             <main className="space-y-6">
-                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>初回料金:</strong> {store.initialPriceText}</li><li><strong>バック料金:</strong> {store.backCharge}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>店舗の雰囲気:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
+                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>初回料金:</strong> {store.initialPriceText}</li><li><strong>バック料金:</strong> {store.backCharge}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>店舗の雰囲気:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
                 <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
                 <div className="bg-gray-800 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-700 p-3 rounded">{memo}</p></div>)}</div>
             </main>
@@ -574,7 +584,7 @@ function AdminStoresScreen({ navigateTo }) {
 }
 
 function AdminStoreEditScreen({ store, navigateTo }) {
-    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1 });
+    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
     const [hasPriceRange, setHasPriceRange] = useState(false);
     const [toast, setToast] = useState('');
 
@@ -589,7 +599,9 @@ function AdminStoreEditScreen({ store, navigateTo }) {
                 requiredIds: store.requiredIds || [],
                 initialPriceMin: store.initialPriceMin || '',
                 initialPriceMax: isRange ? (store.initialPriceMax || '') : '',
-                numberOfPeople: store.numberOfPeople || 1
+                numberOfPeople: store.numberOfPeople || 1,
+                locationType: store.locationType || 'walk',
+                contactType: store.contactType || 'phone'
             });
         }
     }, [store]);
@@ -604,6 +616,10 @@ function AdminStoreEditScreen({ store, navigateTo }) {
             const newIds = prev.requiredIds.includes(id) ? prev.requiredIds.filter(i => i !== id) : [...prev.requiredIds, id];
             return { ...prev, requiredIds: newIds };
         });
+    };
+
+    const handleAttributeChange = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSave = async () => {
@@ -669,6 +685,17 @@ function AdminStoreEditScreen({ store, navigateTo }) {
                             <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                     </select>
+                </div>
+                <div>
+                    <label className="text-sm text-gray-400">属性</label>
+                    <div className="flex gap-2 mt-1">
+                        <button onClick={() => handleAttributeChange('locationType', 'walk')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'walk' ? 'bg-pink-500' : 'bg-gray-700'}`}>🚶</button>
+                        <button onClick={() => handleAttributeChange('locationType', 'house')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'house' ? 'bg-pink-500' : 'bg-gray-700'}`}>🏠</button>
+                    </div>
+                    <div className="flex gap-2 mt-1">
+                        <button onClick={() => handleAttributeChange('contactType', 'phone')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'phone' ? 'bg-pink-500' : 'bg-gray-700'}`}>📱</button>
+                        <button onClick={() => handleAttributeChange('contactType', 'none')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'none' ? 'bg-pink-500' : 'bg-gray-700'}`}>❌</button>
+                    </div>
                 </div>
                 <div>
                     <label className="text-sm text-gray-400">必須身分証</label>
