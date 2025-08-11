@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getApps, getApp, initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, orderBy, limit, startAfter } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { firebaseConfig } from './firebaseConfig';
-
+import { getApps, initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';import React, { useState, useEffect, useMemo } from 'react';
+import { getApps, initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 
 // --- アイコンコンポーネント ---
 const Home = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg> );
@@ -110,10 +111,10 @@ function App() {
     const createNewCustomer = async () => {
         setError(''); setLoading(true);
         try {
-            const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
+            const storesSnapshot_2 = await getDocs(collection(db, storeCollectionPath));
             const storeStatuses = storesSnapshot.docs.map(doc => ({ storeId: doc.id, status: 'active' }));
             const newCustomer = { nickname: "新規顧客", storeStatuses, createdAt: new Date(), preferences: "" };
-            const docRef = await addDoc(collection(db, customerCollectionPath), newCustomer);
+            const docRef_2 = await addDoc(collection(db, customerCollectionPath), newCustomer);
             setCustomerData(newCustomer); setCustomerId(docRef.id); setPage('list'); setListFilter('all');
         } catch (e) { console.error("Error creating new customer: ", e); setError("新規顧客の作成に失敗しました。"); }
         setLoading(false);
@@ -287,8 +288,8 @@ function StoreDetailScreen({ storeId, navigateTo }) {
 
     useEffect(() => {
         const fetchStore = async () => {
-            const docRef = doc(db, storeCollectionPath, storeId);
-            const docSnap = await getDoc(docRef);
+            const docRef_3 = doc(db, storeCollectionPath, storeId);
+            const docSnap_2 = await getDoc(docRef);
             if (docSnap.exists()) setStore(docSnap.data());
             setLoading(false);
         };
@@ -343,7 +344,7 @@ function AdminCustomersScreen({ navigateTo }) {
     const fetchCustomers = async () => {
         try {
             const q = query(collection(db, customerCollectionPath));
-            const querySnapshot = await getDocs(q);
+            const querySnapshot_2 = await getDocs(q);
             const customersList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setCustomers(customersList);
         } catch (error) { console.error("Error fetching customers: ", error); }
@@ -428,11 +429,11 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
             if (!customerId) return;
             setLoading(true);
             try {
-                const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
+                const storesSnapshot_3 = await getDocs(collection(db, storeCollectionPath));
                 const storesData = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setAllStores(storesData);
-                const docRef = doc(db, customerCollectionPath, customerId);
-                const docSnap = await getDoc(docRef);
+                const docRef_4 = doc(db, customerCollectionPath, customerId);
+                const docSnap_3 = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     setCustomer(data);
@@ -448,7 +449,7 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     // 保存処理（ニックネームも保存）
     const handleSave = async () => {
         try {
-            const customerRef = doc(db, customerCollectionPath, customerId);
+            const customerRef_2 = doc(db, customerCollectionPath, customerId);
             await updateDoc(customerRef, { 
                 preferences: preferences,
                 nickname: nickname 
@@ -525,8 +526,8 @@ function AdminStoresScreen({ navigateTo }) {
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
-        const fetchStores = async () => {
-            const querySnapshot = await getDocs(collection(db, storeCollectionPath));
+        const fetchStores_2 = async () => {
+            const querySnapshot_3 = await getDocs(collection(db, storeCollectionPath));
             setStores(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             setLoading(false);
         };
@@ -587,7 +588,7 @@ function AdminStoreEditScreen({ store, navigateTo }) {
         });
     };
 
-    const handleSave = async () => {
+    const handleSave_2 = async () => {
         const minPrice = Number(formData.initialPriceMin) || 0;
         const maxPrice = hasPriceRange ? (Number(formData.initialPriceMax) || minPrice) : minPrice;
 
@@ -769,23 +770,23 @@ export default App;
 
 
 // --- アイコンコンポーネント ---
-const Home = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg> );
-const CheckSquare = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> );
-const LogOut = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> );
-const ArrowLeft = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> );
-const X = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> );
-const MapPin = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> );
-const LinkIcon = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg> );
-const Clipboard = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg> );
-const Shield = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> );
-const Edit = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> );
-const PlusCircle = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> );
-const Trash2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> );
+const Home_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg> );
+const CheckSquare_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> );
+const LogOut_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> );
+const ArrowLeft_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> );
+const X_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> );
+const MapPin_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> );
+const LinkIcon_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg> );
+const Clipboard_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg> );
+const Shield_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> );
+const Edit_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> );
+const PlusCircle_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> );
+const Trash2_2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> );
 
 
 // --- Firebaseの初期設定 ---
 // eslint-disable-next-line no-undef
-const firebaseConfig = {
+const firebaseConfig_2 = {
   apiKey: "AIzaSyBDXaOWBwJ2-go5e7wGV-ovD4S3Et-E2GY",
   authDomain: "shima-tool.firebaseapp.com",
   projectId: "shima-tool",
@@ -803,8 +804,8 @@ const customerCollectionPath = `artifacts/${appId}/public/data/customers`;
 const storeCollectionPath = `artifacts/${appId}/public/data/stores`;
 
 // --- 定数データ ---
-const idTypes = ["運転免許証", "マイナンバー", "パスポート", "保険証", "キャッシュカード", "クレジットカード"];
-const priceFilterRanges = [
+const idTypes_2 = ["運転免許証", "マイナンバー", "パスポート", "保険証", "キャッシュカード", "クレジットカード"];
+const priceFilterRanges_2 = [
     { label: "無料", min: 0, max: 0 },
     { label: "~500円", min: 1, max: 500 },
     { label: "~1000円", min: 501, max: 1000 },
@@ -812,14 +813,14 @@ const priceFilterRanges = [
     { label: "~2500円", min: 1501, max: 2500 },
     { label: "~5000円", min: 2501, max: 5000 }
 ];
-const initialStoresData = [
+const initialStoresData_2 = [
     { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。' },
     { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。' },
     { id: 'store3', name: 'Lillion', group: 'Lillion', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。' },
 ];
 
 // --- メインアプリケーションコンポーネント ---
-function App() {
+function App_2() {
     const [page, setPage] = useState('login');
     const [listFilter, setListFilter] = useState('all');
     const [customerId, setCustomerId] = useState(null);
@@ -832,14 +833,14 @@ function App() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        const unsubscribe_2 = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 try {
-                    const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
+                    const storesSnapshot_4 = await getDocs(collection(db, storeCollectionPath));
                     if (storesSnapshot.empty) {
-                        const batch = writeBatch(db);
+                        const batch_2 = writeBatch(db);
                         initialStoresData.forEach(store => {
-                            const storeRef = doc(db, storeCollectionPath, store.id);
+                            const storeRef_2 = doc(db, storeCollectionPath, store.id);
                             batch.set(storeRef, store);
                         });
                         await batch.commit();
@@ -863,12 +864,12 @@ function App() {
         return () => unsubscribe();
     }, []);
 
-    const loadCustomerData = async (id) => {
+    const loadCustomerData_2 = async (id) => {
         setError(''); setLoading(true);
         if (!id) { setError("顧客IDが無効です。"); setLoading(false); return; }
         try {
-            const docRef = doc(db, customerCollectionPath, id);
-            const docSnap = await getDoc(docRef);
+            const docRef_5 = doc(db, customerCollectionPath, id);
+            const docSnap_4 = await getDoc(docRef);
             if (docSnap.exists()) {
                 setCustomerData(docSnap.data()); setCustomerId(id); setPage('list'); setListFilter('all');
             } else { setError("指定された顧客IDは存在しません。"); }
@@ -876,27 +877,27 @@ function App() {
         setLoading(false);
     };
 
-    const createNewCustomer = async () => {
+    const createNewCustomer_2 = async () => {
         setError(''); setLoading(true);
         try {
-            const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
-            const storeStatuses = storesSnapshot.docs.map(doc => ({ storeId: doc.id, status: 'active' }));
-            const newCustomer = { nickname: "新規顧客", storeStatuses, createdAt: new Date(), preferences: "" };
-            const docRef = await addDoc(collection(db, customerCollectionPath), newCustomer);
+            const storesSnapshot_5 = await getDocs(collection(db, storeCollectionPath));
+            const storeStatuses_2 = storesSnapshot.docs.map(doc => ({ storeId: doc.id, status: 'active' }));
+            const newCustomer_2 = { nickname: "新規顧客", storeStatuses, createdAt: new Date(), preferences: "" };
+            const docRef_6 = await addDoc(collection(db, customerCollectionPath), newCustomer);
             setCustomerData(newCustomer); setCustomerId(docRef.id); setPage('list'); setListFilter('all');
         } catch (e) { console.error("Error creating new customer: ", e); setError("新規顧客の作成に失敗しました。"); }
         setLoading(false);
     };
 
-    const navigateTo = (targetPage, data = null) => {
+    const navigateTo_2 = (targetPage, data = null) => {
         if (targetPage === 'detail') setSelectedStoreId(data);
         if (targetPage === 'adminCustomerDetail') setSelectedAdminCustomerId(data);
         if (targetPage === 'adminStoreEdit') setEditingStore(data);
         setPage(targetPage);
     };
-    const handleLogout = () => { setCustomerId(null); setCustomerData(null); setPage('login'); };
+    const handleLogout_2 = () => { setCustomerId(null); setCustomerData(null); setPage('login'); };
 
-    const renderPage = () => {
+    const renderPage_2 = () => {
         if (loading) return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading...</div>;
         switch (page) {
             case 'login': return <LoginScreen onLogin={loadCustomerData} onCreate={createNewCustomer} setAdminLoginOpen={setAdminLoginOpen} error={error} />;
@@ -924,7 +925,7 @@ function App() {
 
 // --- 画面コンポーネント ---
 
-function LoginScreen({ onLogin, onCreate, setAdminLoginOpen, error }) {
+function LoginScreen_2({ onLogin, onCreate, setAdminLoginOpen, error }) {
     const [inputId, setInputId] = useState('');
     return (
         <div className="flex flex-col justify-center items-center h-screen p-6 bg-gray-900">
@@ -943,7 +944,7 @@ function LoginScreen({ onLogin, onCreate, setAdminLoginOpen, error }) {
     );
 }
 
-function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo, listFilter }) {
+function StoreListScreen_2({ customerData, setCustomerData, customerId, navigateTo, listFilter }) {
     const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, storeId: null });
     const [idFilterModalOpen, setIdFilterModalOpen] = useState(false);
     const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
@@ -954,35 +955,35 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     const [allStores, setAllStores] = useState([]);
 
     useEffect(() => {
-        const fetchStores = async () => {
-            const querySnapshot = await getDocs(collection(db, storeCollectionPath));
+        const fetchStores_3 = async () => {
+            const querySnapshot_4 = await getDocs(collection(db, storeCollectionPath));
             setAllStores(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         };
         fetchStores();
     }, []);
 
-    const allGroups = useMemo(() => [...new Set(allStores.map(s => s.group) || [])], [allStores]);
+    const allGroups_2 = useMemo(() => [...new Set(allStores.map(s => s.group) || [])], [allStores]);
 
-    const updateStoreStatus = async (storeId, newStatus) => {
-        const newStoreStatuses = customerData.storeStatuses.map(s => s.storeId === storeId ? { ...s, status: newStatus } : s);
-        const updatedCustomerData = { ...customerData, storeStatuses: newStoreStatuses };
+    const updateStoreStatus_2 = async (storeId, newStatus) => {
+        const newStoreStatuses_2 = customerData.storeStatuses.map(s => s.storeId === storeId ? { ...s, status: newStatus } : s);
+        const updatedCustomerData_2 = { ...customerData, storeStatuses: newStoreStatuses };
         setCustomerData(updatedCustomerData);
         setStatusUpdateModal({ isOpen: false, storeId: null });
         try {
-            const customerRef = doc(db, customerCollectionPath, customerId);
+            const customerRef_3 = doc(db, customerCollectionPath, customerId);
             await updateDoc(customerRef, { storeStatuses: newStoreStatuses });
         } catch (e) { console.error("Error updating store status: ", e); }
     };
 
-    const combinedStores = useMemo(() => {
+    const combinedStores_2 = useMemo(() => {
         if (!allStores.length || !customerData?.storeStatuses) return [];
         return allStores.map(store => {
-            const statusInfo = customerData.storeStatuses.find(s => s.storeId === store.id);
+            const statusInfo_2 = customerData.storeStatuses.find(s => s.storeId === store.id);
             return { ...store, status: statusInfo?.status || 'active' };
         });
     }, [allStores, customerData]);
 
-    const filteredStores = useMemo(() => {
+    const filteredStores_2 = useMemo(() => {
         let stores = combinedStores;
         if (listFilter === 'visited') stores = stores.filter(s => s.status === 'visited');
         else stores = stores.filter(s => s.status === 'active' || s.status === 'unwanted');
@@ -1021,7 +1022,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     );
 }
 
-function StoreDetailScreen({ storeId, navigateTo }) {
+function StoreDetailScreen_2({ storeId, navigateTo }) {
     const [store, setStore] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showPasswordInput, setShowPasswordInput] = useState(false);
@@ -1031,16 +1032,16 @@ function StoreDetailScreen({ storeId, navigateTo }) {
     const [modalMessage, setModalMessage] = useState('');
 
     useEffect(() => {
-        const fetchStore = async () => {
-            const docRef = doc(db, storeCollectionPath, storeId);
-            const docSnap = await getDoc(docRef);
+        const fetchStore_2 = async () => {
+            const docRef_7 = doc(db, storeCollectionPath, storeId);
+            const docSnap_5 = await getDoc(docRef);
             if (docSnap.exists()) setStore(docSnap.data());
             setLoading(false);
         };
         if(storeId) fetchStore();
     }, [storeId]);
 
-    const handlePasswordCheck = () => {
+    const handlePasswordCheck_2 = () => {
         if (password === '1234') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
         else { setModalMessage('パスワードが違います'); }
     };
@@ -1061,7 +1062,7 @@ function StoreDetailScreen({ storeId, navigateTo }) {
     );
 }
 
-function AdminScreen({ navigateTo }) {
+function AdminScreen_2({ navigateTo }) {
     return (
         <div className="p-4">
             <button onClick={() => navigateTo('login')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />トップに戻る</button>
@@ -1080,16 +1081,16 @@ function AdminScreen({ navigateTo }) {
     );
 }
 
-function AdminCustomersScreen({ navigateTo }) {
+function AdminCustomersScreen_2({ navigateTo }) {
     const [customers, setCustomers] = useState([]);
     const [toast, setToast] = useState('');
     const [customerToDelete, setCustomerToDelete] = useState(null); // 削除確認用
 
-    const fetchCustomers = async () => {
+    const fetchCustomers_2 = async () => {
         try {
-            const q = query(collection(db, customerCollectionPath));
-            const querySnapshot = await getDocs(q);
-            const customersList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const q_2 = query(collection(db, customerCollectionPath));
+            const querySnapshot_5 = await getDocs(q);
+            const customersList_2 = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setCustomers(customersList);
         } catch (error) { console.error("Error fetching customers: ", error); }
     };
@@ -1098,8 +1099,8 @@ function AdminCustomersScreen({ navigateTo }) {
         fetchCustomers();
     }, []);
 
-    const copyToClipboard = (text) => {
-        const textArea = document.createElement("textarea");
+    const copyToClipboard_2 = (text) => {
+        const textArea_2 = document.createElement("textarea");
         textArea.value = text;
         textArea.style.position = "fixed"; textArea.style.left = "-9999px";
         document.body.appendChild(textArea);
@@ -1110,7 +1111,7 @@ function AdminCustomersScreen({ navigateTo }) {
     };
 
     // 顧客削除処理
-    const handleDeleteCustomer = async () => {
+    const handleDeleteCustomer_2 = async () => {
         if (!customerToDelete) return;
         try {
             await deleteDoc(doc(db, customerCollectionPath, customerToDelete.id));
@@ -1159,7 +1160,7 @@ function AdminCustomersScreen({ navigateTo }) {
     );
 }
 
-function AdminCustomerDetailScreen({ customerId, navigateTo }) {
+function AdminCustomerDetailScreen_2({ customerId, navigateTo }) {
     const [customer, setCustomer] = useState(null);
     const [allStores, setAllStores] = useState([]);
     const [preferences, setPreferences] = useState('');
@@ -1169,17 +1170,17 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // 削除確認モーダル用
 
     useEffect(() => {
-        const fetchAllData = async () => {
+        const fetchAllData_2 = async () => {
             if (!customerId) return;
             setLoading(true);
             try {
-                const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
-                const storesData = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const storesSnapshot_6 = await getDocs(collection(db, storeCollectionPath));
+                const storesData_2 = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setAllStores(storesData);
-                const docRef = doc(db, customerCollectionPath, customerId);
-                const docSnap = await getDoc(docRef);
+                const docRef_8 = doc(db, customerCollectionPath, customerId);
+                const docSnap_6 = await getDoc(docRef);
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
+                    const data_2 = docSnap.data();
                     setCustomer(data);
                     setPreferences(data.preferences || '');
                     setNickname(data.nickname || ''); // ニックネームをstateにセット
@@ -1191,9 +1192,9 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     }, [customerId]);
 
     // 保存処理（ニックネームも保存）
-    const handleSave = async () => {
+    const handleSave_3 = async () => {
         try {
-            const customerRef = doc(db, customerCollectionPath, customerId);
+            const customerRef_4 = doc(db, customerCollectionPath, customerId);
             await updateDoc(customerRef, { 
                 preferences: preferences,
                 nickname: nickname 
@@ -1206,7 +1207,7 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     };
 
     // 顧客削除処理
-    const handleDelete = async () => {
+    const handleDelete_2 = async () => {
         try {
             await deleteDoc(doc(db, customerCollectionPath, customerId));
             setIsDeleteModalOpen(false);
@@ -1222,7 +1223,7 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     if (loading) return <div className="p-4 text-center">顧客情報を読み込み中...</div>;
     if (!customer) return <div className="p-4 text-center">顧客情報が見つかりません。</div>;
 
-    const visitedStores = customer.storeStatuses.filter(s => s.status === 'visited').map(s => allStores.find(store => store.id === s.storeId)).filter(Boolean);
+    const visitedStores_2 = customer.storeStatuses.filter(s => s.status === 'visited').map(s => allStores.find(store => store.id === s.storeId)).filter(Boolean);
 
     return (
         <div className="p-4 pb-24">
@@ -1266,12 +1267,12 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     );
 }
 
-function AdminStoresScreen({ navigateTo }) {
+function AdminStoresScreen_2({ navigateTo }) {
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
-        const fetchStores = async () => {
-            const querySnapshot = await getDocs(collection(db, storeCollectionPath));
+        const fetchStores_4 = async () => {
+            const querySnapshot_6 = await getDocs(collection(db, storeCollectionPath));
             setStores(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             setLoading(false);
         };
@@ -1300,14 +1301,14 @@ function AdminStoresScreen({ navigateTo }) {
     );
 }
 
-function AdminStoreEditScreen({ store, navigateTo }) {
+function AdminStoreEditScreen_2({ store, navigateTo }) {
     const [formData, setFormData] = useState({ name: '', group: '', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '' });
     const [hasPriceRange, setHasPriceRange] = useState(false);
     const [toast, setToast] = useState('');
 
     useEffect(() => {
         if (store) {
-            const isRange = store.initialPriceMin !== store.initialPriceMax;
+            const isRange_2 = store.initialPriceMin !== store.initialPriceMax;
             setHasPriceRange(isRange);
             setFormData({ 
                 ...store, 
@@ -1319,23 +1320,23 @@ function AdminStoreEditScreen({ store, navigateTo }) {
         }
     }, [store]);
 
-    const handleChange = (e) => {
+    const handleChange_2 = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleIdChange = (id) => {
+    const handleIdChange_2 = (id) => {
         setFormData(prev => {
-            const newIds = prev.requiredIds.includes(id) ? prev.requiredIds.filter(i => i !== id) : [...prev.requiredIds, id];
+            const newIds_2 = prev.requiredIds.includes(id) ? prev.requiredIds.filter(i => i !== id) : [...prev.requiredIds, id];
             return { ...prev, requiredIds: newIds };
         });
     };
 
-    const handleSave = async () => {
-        const minPrice = Number(formData.initialPriceMin) || 0;
-        const maxPrice = hasPriceRange ? (Number(formData.initialPriceMax) || minPrice) : minPrice;
+    const handleSave_4 = async () => {
+        const minPrice_2 = Number(formData.initialPriceMin) || 0;
+        const maxPrice_2 = hasPriceRange ? (Number(formData.initialPriceMax) || minPrice) : minPrice;
 
-        const dataToSave = {
+        const dataToSave_2 = {
             ...formData,
             initialPriceMin: minPrice,
             initialPriceMax: maxPrice,
@@ -1407,7 +1408,7 @@ function AdminStoreEditScreen({ store, navigateTo }) {
 
 
 // --- 下部ナビゲーションバー & モーダル ---
-function BottomNavBar({ currentFilter, setFilter, onLogout }) {
+function BottomNavBar_2({ currentFilter, setFilter, onLogout }) {
     return (
         <nav className="fixed bottom-0 left-0 right-0 bg-gray-800 max-w-lg mx-auto h-20 flex items-center justify-around px-4">
             <button onClick={() => setFilter('visited')} className={`flex flex-col items-center justify-center w-24 h-full ${currentFilter === 'visited' ? 'text-pink-400' : 'text-gray-400'}`}><CheckSquare className="w-7 h-7 mb-1" /><span className="text-xs">行った店</span></button>
@@ -1417,7 +1418,7 @@ function BottomNavBar({ currentFilter, setFilter, onLogout }) {
     );
 }
 
-function StatusUpdateModal({ onClose, onUpdate }) {
+function StatusUpdateModal_2({ onClose, onUpdate }) {
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
@@ -1431,9 +1432,9 @@ function StatusUpdateModal({ onClose, onUpdate }) {
         </div>
     );
 }
-function IdSelectionModal({ currentSelected, onClose, onApply }) {
+function IdSelectionModal_2({ currentSelected, onClose, onApply }) {
     const [selected, setSelected] = useState(currentSelected);
-    const toggleId = (id) => {
+    const toggleId_2 = (id) => {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
     return (
@@ -1446,10 +1447,10 @@ function IdSelectionModal({ currentSelected, onClose, onApply }) {
         </div>
     );
 }
-function AdminLoginModal({ onClose, onLoginSuccess }) {
+function AdminLoginModal_2({ onClose, onLoginSuccess }) {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const handleLogin = () => {
+    const handleLogin_2 = () => {
         if (password === '1234') { onLoginSuccess(); } 
         else { setError('パスワードが違います'); setPassword(''); }
     };
@@ -1464,7 +1465,7 @@ function AdminLoginModal({ onClose, onLoginSuccess }) {
         </div>
     );
 }
-function GroupSelectionModal({ groups, onClose, onSelect }) {
+function GroupSelectionModal_2({ groups, onClose, onSelect }) {
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
@@ -1477,7 +1478,7 @@ function GroupSelectionModal({ groups, onClose, onSelect }) {
         </div>
     );
 }
-function PriceSelectionModal({ onClose, onSelect }) {
+function PriceSelectionModal_2({ onClose, onSelect }) {
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
@@ -1492,7 +1493,7 @@ function PriceSelectionModal({ onClose, onSelect }) {
 }
 
 // 新しく追加した確認モーダルコンポーネント
-function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
+function ConfirmationModal_2({ isOpen, onClose, onConfirm, title, message }) {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
