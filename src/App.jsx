@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getApps, initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';import React, { useState, useEffect, useMemo } from 'react';
-import { getApps, initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getApps, getApp, initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs, query, orderBy, limit, startAfter } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { firebaseConfig } from './firebaseConfig';
+
 
 // --- アイコンコンポーネント ---
 const Home = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg> );
