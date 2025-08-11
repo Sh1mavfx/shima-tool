@@ -59,9 +59,9 @@ const numberOfPeopleOptions = [
 ];
 
 const initialStoresData = [
-    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2, locationType: 'walk', contactType: 'phone' },
-    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4, locationType: 'house', contactType: 'phone' },
-    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3, locationType: 'walk', contactType: 'none' },
+    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', openingTime: '19:00', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2, locationType: 'walk', contactType: 'phone' },
+    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', openingTime: '20:00', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4, locationType: 'house', contactType: 'phone' },
+    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', openingTime: '18:00', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3, locationType: 'walk', contactType: 'none' },
 ];
 
 // --- メインアプリケーションコンポーネント ---
@@ -284,10 +284,10 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                         <div className="grow" onClick={() => store.status === 'active' && navigateTo('detail', store.id)}>
                             <div className="flex items-center gap-2">
                                 <h2 className="text-lg font-bold">{store.name}</h2>
-                                {store.locationType === 'walk' ? <User className="w-5 h-5" /> : <Home className="w-5 h-5" />}
-                                {store.contactType === 'phone' ? <Smartphone className="w-5 h-5" /> : <X className="w-5 h-5" />}
+                                {store.locationType === 'walk' ? '🚶' : '🏠'}
+                                {store.contactType === 'phone' ? '📱' : '❌'}
                             </div>
-                            <p className="text-gray-400 text-sm">{store.group} / {store.initialPriceText} / ~{store.numberOfPeople}人</p>
+                            <p className="text-gray-400 text-sm">{store.group} / {store.openingTime} / {store.initialPriceText} / ~{store.numberOfPeople}人</p>
                             <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                         </div>
                         {store.status === 'active' && (<button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="ml-4 bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>)}
@@ -336,7 +336,7 @@ function StoreDetailScreen({ storeId, navigateTo }) {
             <button onClick={() => navigateTo('list')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />一覧に戻る</button>
             <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
             <main className="space-y-6">
-                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>初回料金:</strong> {store.initialPriceText}</li><li><strong>バック料金:</strong> {store.backCharge}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>店舗の雰囲気:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
+                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>初回料金:</strong> {store.initialPriceText}</li><li><strong>バック料金:</strong> {store.backCharge}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>店舗の雰囲気:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
                 <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
                 <div className="bg-gray-800 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-700 p-3 rounded">{memo}</p></div>)}</div>
             </main>
@@ -584,7 +584,7 @@ function AdminStoresScreen({ navigateTo }) {
 }
 
 function AdminStoreEditScreen({ store, navigateTo }) {
-    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
+    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
     const [hasPriceRange, setHasPriceRange] = useState(false);
     const [toast, setToast] = useState('');
 
@@ -595,6 +595,7 @@ function AdminStoreEditScreen({ store, navigateTo }) {
             setFormData({ 
                 ...store, 
                 phoneticName: store.phoneticName || '',
+                openingTime: store.openingTime || '',
                 tags: store.tags.join(', '), 
                 requiredIds: store.requiredIds || [],
                 initialPriceMin: store.initialPriceMin || '',
@@ -659,6 +660,7 @@ function AdminStoreEditScreen({ store, navigateTo }) {
                 <div><label className="text-sm text-gray-400">店名</label><input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
                 <div><label className="text-sm text-gray-400">グループ</label><input type="text" name="group" value={formData.group} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
                 <div><label className="text-sm text-gray-400">読み仮名 / 通称</label><input type="text" name="phoneticName" value={formData.phoneticName} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">営業時間</label><input type="text" name="openingTime" value={formData.openingTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
                 
                 <div>
                     <label className="flex items-center gap-2 text-sm text-gray-400">
