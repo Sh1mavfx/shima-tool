@@ -20,15 +20,7 @@ const Trash2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" h
 
 // --- Firebaseの初期設定 ---
 // eslint-disable-next-line no-undef
-const firebaseConfig = {
-  apiKey: "AIzaSyBDXaOWBwJ2-go5e7wGV-ovD4S3Et-E2GY",
-  authDomain: "shima-tool.firebaseapp.com",
-  projectId: "shima-tool",
-  storageBucket: "shima-tool.firebasestorage.app",
-  messagingSenderId: "1047021803924",
-  appId: "1:1047021803924:web:ed63eb1dff81707d8dd781",
-  measurementId: "G-9GE47W77ZR"
-};
+const firebaseConfig = JSON.parse(__firebase_config);
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const db = getFirestore(app);
 const auth = getAuth(app);
