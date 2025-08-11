@@ -249,7 +249,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         if (selectedGroup) stores = stores.filter(s => s.group === selectedGroup);
         if (selectedPriceRange) stores = stores.filter(s => s.initialPriceMin >= selectedPriceRange.min && s.initialPriceMin <= selectedPriceRange.max);
         if (selectedIds.length > 0) stores = stores.filter(s => selectedIds.every(id => s.requiredIds.includes(id)));
-        if (selectedNumberOfPeople) stores = stores.filter(s => s.numberOfPeople <= selectedNumberOfPeople.value);
+        if (selectedNumberOfPeople) stores = stores.filter(s => s.numberOfPeople >= selectedNumberOfPeople.value);
         if (listFilter !== 'visited') stores.sort((a,b) => (a.status === 'unwanted') - (b.status === 'unwanted'));
         return stores;
     }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople]);
