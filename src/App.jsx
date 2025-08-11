@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getApps, initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 
 // --- アイコンコンポーネント ---
@@ -15,10 +15,11 @@ const Clipboard = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24
 const Shield = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> );
 const Edit = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> );
 const PlusCircle = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> );
+const Trash2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> );
+
 
 // --- Firebaseの初期設定 ---
 // eslint-disable-next-line no-undef
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBDXaOWBwJ2-go5e7wGV-ovD4S3Et-E2GY",
   authDomain: "shima-tool.firebaseapp.com",
@@ -165,7 +166,8 @@ function LoginScreen({ onLogin, onCreate, setAdminLoginOpen, error }) {
              <h1 className="text-4xl font-bold text-pink-400 mb-2">Host-Manager</h1>
             <p className="text-gray-400 mb-8">顧客IDを入力または新規作成してください</p>
             <div className="w-full max-w-sm">
-                <input type="text" value={inputId} onChange={(e) => setInputId(e.target.value)} placeholder="顧客ID" className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors" />
+                {/* 顧客IDの入力を8桁に制限 */}
+                <input type="text" value={inputId} onChange={(e) => setInputId(e.target.value)} placeholder="顧客ID (8桁以内)" maxLength="8" className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors" />
                 <button onClick={() => onLogin(inputId)} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">ログイン</button>
             </div>
             <div className="my-6 text-gray-500">または</div>
@@ -316,16 +318,18 @@ function AdminScreen({ navigateTo }) {
 function AdminCustomersScreen({ navigateTo }) {
     const [customers, setCustomers] = useState([]);
     const [toast, setToast] = useState('');
+    const [customerToDelete, setCustomerToDelete] = useState(null); // 削除確認用
+
+    const fetchCustomers = async () => {
+        try {
+            const q = query(collection(db, customerCollectionPath));
+            const querySnapshot = await getDocs(q);
+            const customersList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setCustomers(customersList);
+        } catch (error) { console.error("Error fetching customers: ", error); }
+    };
 
     useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                const q = query(collection(db, customerCollectionPath));
-                const querySnapshot = await getDocs(q);
-                const customersList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setCustomers(customersList);
-            } catch (error) { console.error("Error fetching customers: ", error); }
-        };
         fetchCustomers();
     }, []);
 
@@ -338,6 +342,21 @@ function AdminCustomersScreen({ navigateTo }) {
         try { document.execCommand('copy'); setToast('IDをコピーしました！'); setTimeout(() => setToast(''), 2000); } 
         catch (err) { console.error('Failed to copy: ', err); }
         document.body.removeChild(textArea);
+    };
+
+    // 顧客削除処理
+    const handleDeleteCustomer = async () => {
+        if (!customerToDelete) return;
+        try {
+            await deleteDoc(doc(db, customerCollectionPath, customerToDelete.id));
+            setToast(`顧客「${customerToDelete.nickname}」を削除しました。`);
+            setCustomerToDelete(null);
+            fetchCustomers(); // リストを再読み込み
+        } catch (error) {
+            console.error("Error deleting customer: ", error);
+            setToast('顧客の削除に失敗しました。');
+        }
+        setTimeout(() => setToast(''), 3000);
     };
 
     return (
@@ -355,10 +374,22 @@ function AdminCustomersScreen({ navigateTo }) {
                             <p className="font-bold">{customer.nickname}</p>
                             <p className="text-xs text-gray-400 truncate">ID: {customer.id}</p>
                         </div>
-                        <button onClick={() => copyToClipboard(customer.id)} className="ml-4 p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Clipboard className="w-5 h-5" /></button>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => copyToClipboard(customer.id)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Clipboard className="w-5 h-5" /></button>
+                            {/* 削除ボタンを追加 */}
+                            <button onClick={() => setCustomerToDelete(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-red-500"><Trash2 className="w-5 h-5" /></button>
+                        </div>
                     </div>
                 ))}
             </div>
+            {/* 削除確認モーダル */}
+            <ConfirmationModal 
+                isOpen={!!customerToDelete}
+                onClose={() => setCustomerToDelete(null)}
+                onConfirm={handleDeleteCustomer}
+                title="顧客の削除"
+                message={`本当に顧客「${customerToDelete?.nickname}」を削除しますか？この操作は元に戻せません。`}
+            />
         </div>
     );
 }
@@ -367,11 +398,15 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     const [customer, setCustomer] = useState(null);
     const [allStores, setAllStores] = useState([]);
     const [preferences, setPreferences] = useState('');
+    const [nickname, setNickname] = useState(''); // ニックネーム編集用のstate
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState('');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // 削除確認モーダル用
 
     useEffect(() => {
         const fetchAllData = async () => {
+            if (!customerId) return;
+            setLoading(true);
             try {
                 const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
                 const storesData = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -382,6 +417,7 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
                     const data = docSnap.data();
                     setCustomer(data);
                     setPreferences(data.preferences || '');
+                    setNickname(data.nickname || ''); // ニックネームをstateにセット
                 }
             } catch (error) { console.error("Error fetching customer details: ", error); }
             setLoading(false);
@@ -389,14 +425,32 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
         fetchAllData();
     }, [customerId]);
 
+    // 保存処理（ニックネームも保存）
     const handleSave = async () => {
         try {
             const customerRef = doc(db, customerCollectionPath, customerId);
-            await updateDoc(customerRef, { preferences: preferences });
+            await updateDoc(customerRef, { 
+                preferences: preferences,
+                nickname: nickname 
+            });
             setToast('保存しました！'); setTimeout(() => setToast(''), 2000);
         } catch (error) {
-            console.error("Error saving preferences: ", error);
+            console.error("Error saving customer data: ", error);
             setToast('保存に失敗しました。'); setTimeout(() => setToast(''), 2000);
+        }
+    };
+
+    // 顧客削除処理
+    const handleDelete = async () => {
+        try {
+            await deleteDoc(doc(db, customerCollectionPath, customerId));
+            setIsDeleteModalOpen(false);
+            setToast('顧客を削除しました。');
+            setTimeout(() => navigateTo('adminCustomers'), 1500);
+        } catch (error) {
+            console.error("Error deleting customer: ", error);
+            setToast('削除に失敗しました。');
+            setTimeout(() => setToast(''), 2000);
         }
     };
 
@@ -406,10 +460,21 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     const visitedStores = customer.storeStatuses.filter(s => s.status === 'visited').map(s => allStores.find(store => store.id === s.storeId)).filter(Boolean);
 
     return (
-        <div className="p-4">
+        <div className="p-4 pb-24">
             {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
             <button onClick={() => navigateTo('adminCustomers')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />顧客管理に戻る</button>
-            <h1 className="text-2xl font-bold mb-4">{customer.nickname}の情報</h1>
+            
+            {/* ニックネームを編集可能な入力フィールドに変更 */}
+            <div className="mb-4">
+                <label className="text-sm text-gray-400">ニックネーム</label>
+                <input 
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    className="w-full p-2 bg-gray-800 rounded-md mt-1 text-2xl font-bold"
+                />
+            </div>
+
             <div className="bg-gray-800 p-4 rounded-lg mb-6">
                 <h2 className="font-bold text-lg mb-2">行ったことある店</h2>
                 {visitedStores.length > 0 ? (<ul className="list-disc list-inside text-gray-300">{visitedStores.map(store => <li key={store.id}>{store.name}</li>)}</ul>) : (<p className="text-gray-400">まだありません。</p>)}
@@ -417,8 +482,21 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
             <div className="bg-gray-800 p-4 rounded-lg">
                 <h2 className="font-bold text-lg mb-2">お店の好み（メモ）</h2>
                 <textarea value={preferences} onChange={(e) => setPreferences(e.target.value)} className="w-full h-32 p-2 bg-gray-700 rounded-md text-white" placeholder="例：静かなお店が好き、シャンパンコールは苦手など"></textarea>
-                <button onClick={handleSave} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg">保存</button>
             </div>
+            <div className="mt-6 space-y-3">
+                 <button onClick={handleSave} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">保存</button>
+                 {/* 顧客削除ボタン */}
+                 <button onClick={() => setIsDeleteModalOpen(true)} className="w-full bg-red-800 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg">この顧客を削除する</button>
+            </div>
+            
+            {/* 削除確認モーダル */}
+            <ConfirmationModal 
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDelete}
+                title="顧客の削除"
+                message={`本当に顧客「${nickname}」を削除しますか？この操作は元に戻せません。`}
+            />
         </div>
     );
 }
@@ -642,6 +720,23 @@ function PriceSelectionModal({ onClose, onSelect }) {
                 <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
                     <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての料金</button>
                     {priceFilterRanges.map(range => (<button key={range.label} onClick={() => onSelect(range)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{range.label}</button>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// 新しく追加した確認モーダルコンポーネント
+function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="font-bold text-lg text-center mb-2">{title}</h3>
+                <p className="text-gray-300 text-center mb-6">{message}</p>
+                <div className="flex gap-4">
+                    <button onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">キャンセル</button>
+                    <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">削除</button>
                 </div>
             </div>
         </div>

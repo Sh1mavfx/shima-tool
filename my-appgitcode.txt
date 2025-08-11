@@ -1,0 +1,9 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyBDXaOWBwJ2-go5e7wGV-ovD4S3Et-E2GY",
+  authDomain: "shima-tool.firebaseapp.com",
+  projectId: "shima-tool",
+  storageBucket: "shima-tool.firebasestorage.app",
+  messagingSenderId: "1047021803924",
+  appId: "1:1047021803924:web:ed63eb1dff81707d8dd781",
+  measurementId: "G-9GE47W77ZR"
+};
