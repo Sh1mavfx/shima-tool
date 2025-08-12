@@ -128,8 +128,15 @@ function App() {
             const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
             const storeStatuses = storesSnapshot.docs.map(doc => ({ storeId: doc.id, status: 'active' }));
             const newCustomer = { nickname: "新規顧客", storeStatuses, createdAt: new Date(), preferences: "" };
-            const docRef = await addDoc(collection(db, customerCollectionPath), newCustomer);
-            setCustomerData(newCustomer); setCustomerId(docRef.id); setPage('list'); setListFilter('all');
+            
+            // Generate a 6-character random alphanumeric string
+            const randomPart = Math.random().toString(36).substring(2, 8);
+            const newId = `&${randomPart}`;
+
+            const docRef = doc(db, customerCollectionPath, newId);
+            await setDoc(docRef, newCustomer);
+            
+            setCustomerData(newCustomer); setCustomerId(newId); setPage('list'); setListFilter('all');
         } catch (e) { console.error("Error creating new customer: ", e); setError("新規顧客の作成に失敗しました。"); }
         setLoading(false);
     };
@@ -250,6 +257,13 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         if (selectedPriceRange) stores = stores.filter(s => s.initialPriceMin >= selectedPriceRange.min && s.initialPriceMin <= selectedPriceRange.max);
         if (selectedIds.length > 0) stores = stores.filter(s => selectedIds.every(id => s.requiredIds.includes(id)));
         if (selectedNumberOfPeople) stores = stores.filter(s => s.numberOfPeople >= selectedNumberOfPeople.value);
+        
+        stores.sort((a, b) => {
+            const backChargeA = parseInt(a.backCharge.replace(/[^0-9]/g, ''), 10) || 0;
+            const backChargeB = parseInt(b.backCharge.replace(/[^0-9]/g, ''), 10) || 0;
+            return backChargeB - backChargeA;
+        });
+
         if (listFilter !== 'visited') stores.sort((a,b) => (a.status === 'unwanted') - (b.status === 'unwanted'));
         return stores;
     }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople]);
