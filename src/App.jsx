@@ -76,8 +76,14 @@ function App() {
     const [editingStore, setEditingStore] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [isSunday, setIsSunday] = useState(false);
 
     useEffect(() => {
+        const today = new Date();
+        if (today.getDay() === 0) { // 0 is Sunday
+            setIsSunday(true);
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 try {
@@ -152,7 +158,7 @@ function App() {
     const renderPage = () => {
         if (loading) return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading...</div>;
         switch (page) {
-            case 'login': return <LoginScreen onLogin={loadCustomerData} onCreate={createNewCustomer} setAdminLoginOpen={setAdminLoginOpen} error={error} />;
+            case 'login': return <LoginScreen onLogin={loadCustomerData} onCreate={createNewCustomer} setAdminLoginOpen={setAdminLoginOpen} error={error} isSunday={isSunday} />;
             case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} navigateTo={navigateTo} listFilter={listFilter} />;
             case 'detail': return <StoreDetailScreen storeId={selectedStoreId} navigateTo={navigateTo} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} />;
@@ -160,7 +166,7 @@ function App() {
             case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerId={selectedAdminCustomerId} navigateTo={navigateTo} />;
             case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
             case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
-            default: return <LoginScreen onLogin={loadCustomerData} onCreate={createNewCustomer} setAdminLoginOpen={setAdminLoginOpen} error={error} />;
+            default: return <LoginScreen onLogin={loadCustomerData} onCreate={createNewCustomer} setAdminLoginOpen={setAdminLoginOpen} error={error} isSunday={isSunday} />;
         }
     };
 
@@ -177,10 +183,11 @@ function App() {
 
 // --- 画面コンポーネント ---
 
-function LoginScreen({ onLogin, onCreate, setAdminLoginOpen, error }) {
+function LoginScreen({ onLogin, onCreate, setAdminLoginOpen, error, isSunday }) {
     const [inputId, setInputId] = useState('');
     return (
         <div className="flex flex-col justify-center items-center h-screen p-6 bg-gray-900">
+            {isSunday && <div className="absolute top-5 bg-red-500 text-white text-center p-2 rounded-lg">本日は定休日です</div>}
              <h1 className="text-4xl font-bold text-pink-400 mb-2">Host-Manager</h1>
             <p className="text-gray-400 mb-8">顧客IDを入力または新規作成してください</p>
             <div className="w-full max-w-sm">
@@ -493,7 +500,9 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
             const customerRef = doc(db, customerCollectionPath, customerId);
             await updateDoc(customerRef, { 
                 preferences: preferences,
-                nickname: nickname 
+                nickname: nickname,
+                storeStatuses: customer.storeStatuses,
+                possessedIdTypes: customer.possessedIdTypes,
             });
             setToast('保存しました！'); setTimeout(() => setToast(''), 2000);
         } catch (error) {
@@ -514,6 +523,21 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
             setToast('削除に失敗しました。');
             setTimeout(() => setToast(''), 2000);
         }
+    };
+
+    const handleStoreStatusChange = (storeId, newStatus) => {
+        const newStoreStatuses = customer.storeStatuses.map(s => 
+            s.storeId === storeId ? { ...s, status: newStatus } : s
+        );
+        setCustomer(prev => ({ ...prev, storeStatuses: newStoreStatuses }));
+    };
+
+    const handleIdTypeChange = (idType) => {
+        const possessedIdTypes = customer.possessedIdTypes || [];
+        const newIdTypes = possessedIdTypes.includes(idType)
+            ? possessedIdTypes.filter(id => id !== idType)
+            : [...possessedIdTypes, idType];
+        setCustomer(prev => ({ ...prev, possessedIdTypes: newIdTypes }));
     };
 
     if (loading) return <div className="p-4 text-center">顧客情報を読み込み中...</div>;
@@ -539,8 +563,38 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
 
             <div className="bg-gray-800 p-4 rounded-lg mb-6">
                 <h2 className="font-bold text-lg mb-2">行ったことある店</h2>
-                {visitedStores.length > 0 ? (<ul className="list-disc list-inside text-gray-300">{visitedStores.map(store => <li key={store.id}>{store.name}</li>)}</ul>) : (<p className="text-gray-400">まだありません。</p>)}
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                    {allStores.map(store => (
+                        <label key={store.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
+                            <input
+                                type="checkbox"
+                                checked={customer.storeStatuses.some(s => s.storeId === store.id && s.status === 'visited')}
+                                onChange={() => handleStoreStatusChange(store.id, customer.storeStatuses.some(s => s.storeId === store.id && s.status === 'visited') ? 'active' : 'visited')}
+                                className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"
+                            />
+                            <span>{store.name}</span>
+                        </label>
+                    ))}
+                </div>
             </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg mb-6">
+                <h2 className="font-bold text-lg mb-2">所持している本人確認書類</h2>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                    {idTypes.map(idType => (
+                        <label key={idType} className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
+                            <input
+                                type="checkbox"
+                                checked={customer.possessedIdTypes?.includes(idType)}
+                                onChange={() => handleIdTypeChange(idType)}
+                                className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"
+                            />
+                            <span>{idType}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
             <div className="bg-gray-800 p-4 rounded-lg">
                 <h2 className="font-bold text-lg mb-2">お店の好み（メモ）</h2>
                 <textarea value={preferences} onChange={(e) => setPreferences(e.target.value)} className="w-full h-32 p-2 bg-gray-700 rounded-md text-white" placeholder="例：静かなお店が好き、シャンパンコールは苦手など"></textarea>
