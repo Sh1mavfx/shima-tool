@@ -59,9 +59,9 @@ const numberOfPeopleOptions = [
 ];
 
 const initialStoresData = [
-    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', openingTime: '19:00', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2, locationType: 'walk', contactType: 'phone' },
-    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', openingTime: '20:00', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4, locationType: 'house', contactType: 'phone' },
-    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', openingTime: '18:00', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3, locationType: 'walk', contactType: 'none' },
+    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', openingTime: '19:00', initialTime: 60, isSundayOff: false, initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2, locationType: 'walk', contactType: 'phone' },
+    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', openingTime: '20:00', initialTime: 90, isSundayOff: true, initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4, locationType: 'house', contactType: 'phone' },
+    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', openingTime: '18:00', initialTime: 120, isSundayOff: false, initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3, locationType: 'walk', contactType: 'none' },
 ];
 
 // --- メインアプリケーションコンポーネント ---
@@ -133,7 +133,7 @@ function App() {
         try {
             const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
             const storeStatuses = storesSnapshot.docs.map(doc => ({ storeId: doc.id, status: 'active' }));
-            const newCustomer = { nickname: "新規顧客", storeStatuses, createdAt: new Date(), preferences: "" };
+            const newCustomer = { nickname: "新規顧客", storeStatuses, createdAt: new Date(), preferences: "", possessedIdTypes: [] };
             
             // Generate a 6-character random alphanumeric string
             const randomPart = Math.random().toString(36).substring(2, 8);
@@ -209,6 +209,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
     const [priceFilterModalOpen, setPriceFilterModalOpen] = useState(false);
     const [numberOfPeopleModalOpen, setNumberOfPeopleModalOpen] = useState(false);
+    const [locationTypeFilter, setLocationTypeFilter] = useState(null);
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [selectedPriceRange, setSelectedPriceRange] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]);
@@ -264,6 +265,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         if (selectedPriceRange) stores = stores.filter(s => s.initialPriceMin >= selectedPriceRange.min && s.initialPriceMin <= selectedPriceRange.max);
         if (selectedIds.length > 0) stores = stores.filter(s => selectedIds.every(id => s.requiredIds.includes(id)));
         if (selectedNumberOfPeople) stores = stores.filter(s => s.numberOfPeople >= selectedNumberOfPeople.value);
+        if (locationTypeFilter) stores = stores.filter(s => s.locationType === locationTypeFilter);
         
         stores.sort((a, b) => {
             const backChargeA = parseInt(a.backCharge.replace(/[^0-9]/g, ''), 10) || 0;
@@ -273,7 +275,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
 
         if (listFilter !== 'visited') stores.sort((a,b) => (a.status === 'unwanted') - (b.status === 'unwanted'));
         return stores;
-    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople]);
+    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople, locationTypeFilter]);
 
     return (
         <div className="pb-28">
@@ -297,6 +299,8 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                     <button onClick={() => setPriceFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedPriceRange ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>料金{selectedPriceRange ? ` (${selectedPriceRange.label})` : ''}</button>
                     <button onClick={() => setIdFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedIds.length > 0 ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>身分証{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}</button>
                     <button onClick={() => setNumberOfPeopleModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedNumberOfPeople ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>人数{selectedNumberOfPeople ? ` (${selectedNumberOfPeople.label})` : ''}</button>
+                    <button onClick={() => setLocationTypeFilter('walk')} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${locationTypeFilter === 'walk' ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>🚶</button>
+                    <button onClick={() => setLocationTypeFilter('house')} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${locationTypeFilter === 'house' ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>🏠</button>
                 </div>
             </header>
             <main className="p-4 space-y-3">
@@ -308,7 +312,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                                 {store.locationType === 'walk' ? '🚶' : '🏠'}
                                 {store.contactType === 'phone' ? '📱' : '❌'}
                             </div>
-                            <p className="text-gray-400 text-sm">{store.group} / {store.openingTime} / {store.initialPriceText} / ~{store.numberOfPeople}人</p>
+                            <p className="text-gray-400 text-sm">{store.group} / {store.openingTime} / {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`} / ~{store.numberOfPeople}人</p>
                             <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                         </div>
                         {store.status === 'active' && (<button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="ml-4 bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>)}
@@ -357,9 +361,9 @@ function StoreDetailScreen({ storeId, navigateTo }) {
             <button onClick={() => navigateTo('list')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />一覧に戻る</button>
             <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
             <main className="space-y-6">
-                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>初回料金:</strong> {store.initialPriceText}</li><li><strong>バック料金:</strong> {store.backCharge}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>店舗の雰囲気:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
+                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>定休日:</strong> {store.isSundayOff ? '日曜日' : 'なし'}</li><li><strong>初回時間:</strong> {store.initialTime}分</li><li><strong>初回料金:</strong> {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>店舗の雰囲気:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
                 <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
-                <div className="bg-gray-800 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-700 p-3 rounded">{memo}</p></div>)}</div>
+                <div className="bg-gray-800 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-700 p-3 rounded">{memo}</p><p><strong>バック料金:</strong> {store.backCharge}</p></div>)}</div>
             </main>
         </div>
     );
@@ -471,6 +475,7 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // 削除確認モーダル用
+    const [storeSearchTerm, setStoreSearchTerm] = useState('');
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -543,7 +548,7 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     if (loading) return <div className="p-4 text-center">顧客情報を読み込み中...</div>;
     if (!customer) return <div className="p-4 text-center">顧客情報が見つかりません。</div>;
 
-    const visitedStores = customer.storeStatuses.filter(s => s.status === 'visited').map(s => allStores.find(store => store.id === s.storeId)).filter(Boolean);
+    const filteredStoresForAdmin = allStores.filter(store => store.name.toLowerCase().includes(storeSearchTerm.toLowerCase()));
 
     return (
         <div className="p-4 pb-24">
@@ -563,8 +568,15 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
 
             <div className="bg-gray-800 p-4 rounded-lg mb-6">
                 <h2 className="font-bold text-lg mb-2">行ったことある店</h2>
+                <input
+                    type="text"
+                    placeholder="店舗名で検索..."
+                    value={storeSearchTerm}
+                    onChange={(e) => setStoreSearchTerm(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 mb-4"
+                />
                 <div className="grid grid-cols-2 gap-2 mt-2">
-                    {allStores.map(store => (
+                    {filteredStoresForAdmin.map(store => (
                         <label key={store.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
                             <input
                                 type="checkbox"
@@ -652,7 +664,7 @@ function AdminStoresScreen({ navigateTo }) {
 }
 
 function AdminStoreEditScreen({ store, navigateTo }) {
-    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
+    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialTime: '', isSundayOff: false, initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
     const [hasPriceRange, setHasPriceRange] = useState(false);
     const [toast, setToast] = useState('');
 
@@ -664,6 +676,8 @@ function AdminStoreEditScreen({ store, navigateTo }) {
                 ...store, 
                 phoneticName: store.phoneticName || '',
                 openingTime: store.openingTime || '',
+                initialTime: store.initialTime || '',
+                isSundayOff: store.isSundayOff || false,
                 tags: store.tags.join(', '), 
                 requiredIds: store.requiredIds || [],
                 initialPriceMin: store.initialPriceMin || '',
@@ -676,8 +690,8 @@ function AdminStoreEditScreen({ store, navigateTo }) {
     }, [store]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
     const handleIdChange = (id) => {
@@ -699,9 +713,10 @@ function AdminStoreEditScreen({ store, navigateTo }) {
             ...formData,
             initialPriceMin: minPrice,
             initialPriceMax: maxPrice,
-            initialPriceText: hasPriceRange ? `${maxPrice}円※` : `${minPrice}円`,
+            initialPriceText: hasPriceRange ? `${minPrice}円~${maxPrice}円` : `${minPrice}円`,
             tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
-            numberOfPeople: Number(formData.numberOfPeople) || 1
+            numberOfPeople: Number(formData.numberOfPeople) || 1,
+            initialTime: Number(formData.initialTime) || 0
         };
         
         try {
@@ -729,7 +744,13 @@ function AdminStoreEditScreen({ store, navigateTo }) {
                 <div><label className="text-sm text-gray-400">グループ</label><input type="text" name="group" value={formData.group} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
                 <div><label className="text-sm text-gray-400">読み仮名 / 通称</label><input type="text" name="phoneticName" value={formData.phoneticName} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
                 <div><label className="text-sm text-gray-400">営業時間</label><input type="text" name="openingTime" value={formData.openingTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                
+                <div><label className="text-sm text-gray-400">初回時間 (分)</label><input type="number" name="initialTime" value={formData.initialTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div>
+                    <label className="flex items-center gap-2 text-sm text-gray-400">
+                        <input type="checkbox" name="isSundayOff" checked={formData.isSundayOff} onChange={handleChange} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
+                        <span>定休日曜日</span>
+                    </label>
+                </div>
                 <div>
                     <label className="flex items-center gap-2 text-sm text-gray-400">
                         <input type="checkbox" checked={hasPriceRange} onChange={(e) => setHasPriceRange(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
