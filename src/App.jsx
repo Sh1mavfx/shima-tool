@@ -304,7 +304,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
             </header>
             <main className="p-4 space-y-3">
                 {filteredStores.map(store => (
-                    <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' || store.closingDay === today ? 'opacity-40' : ''}`}>
+                    <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' ? 'opacity-40' : ''}`}>
                         <div className="grow" onClick={() => navigateTo('detail', store.id)}>
                             <div className="flex items-center gap-2">
                                 <h2 className="text-lg font-bold">{store.name}</h2>
@@ -315,7 +315,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                             <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                         </div>
                         <button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="ml-4 bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>
-                         {(store.status === 'unwanted' || store.closingDay === today) && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg"><span className="text-white text-xl font-bold transform -rotate-12">{store.closingDay === today ? '定休日' : '行きたくない'}</span></div>)}
+                         {store.closingDay === today && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg"><span className="text-white text-xl font-bold transform -rotate-12">定休日</span></div>)}
                     </div>
                 ))}
             </main>
