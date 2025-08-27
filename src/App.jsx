@@ -121,7 +121,7 @@ function App() {
             const docRef = doc(db, customerCollectionPath, id);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                setCustomerData(docSnap.data()); setCustomerId(id); setPage('list'); setListFilter('all');
+                setCustomerData(docSnap.data()); setCustomerId(id); setPage('list');
             } else { setError("指定された顧客IDは存在しません。"); }
         } catch (e) { console.error("Error loading customer data: ", e); setError("データの読み込みに失敗しました。"); }
         setLoading(false);
@@ -530,10 +530,15 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     };
 
     const handleStoreStatusChange = (storeId, newStatus) => {
-        const newStoreStatuses = customer.storeStatuses.map(s => 
-            s.storeId === storeId ? { ...s, status: newStatus } : s
-        );
-        setCustomer(prev => ({ ...prev, storeStatuses: newStoreStatuses }));
+	let newStoreStatuses = [];
+	if (customer.storeStatuses.some(s => s.storeId === storeId)) {
+	  newStoreStatuses = customer.storeStatuses.map(s =>
+	    s.storeId === storeId ? { ...s, status: newStatus } : s
+	  );
+	} else {
+	    newStoreStatuses = [...customer.storeStatuses, { storeId, status: newStatus }];
+	}
+	  setCustomer(prev => ({ ...prev, storeStatuses: newStoreStatuses }));
     };
 
     const handleIdTypeChange = (idType) => {
@@ -632,12 +637,14 @@ function AdminStoresScreen({ navigateTo }) {
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
-        const fetchStores = async () => {
-            const querySnapshot = await getDocs(collection(db, storeCollectionPath));
-            setStores(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            setLoading(false);
-        };
-        fetchStores();
+	const fetchStores = async () => {
+	  const querySnapshot = await getDocs(collection(db, storeCollectionPath));
+	  const fetchedStores = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+	  fetchedStores.sort((a, b) => a.name.localeCompare(b.name)); // アルファベット順にソート
+	  setStores(fetchedStores);
+	  setLoading(false);
+	};
+	fetchStores();
     }, []);
 
     if (loading) return <div className="p-4 text-center">店舗情報を読み込み中...</div>;
