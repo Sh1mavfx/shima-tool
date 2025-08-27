@@ -305,7 +305,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
             <main className="p-4 space-y-3">
                 {filteredStores.map(store => (
                     <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' || store.closingDay === today ? 'opacity-40' : ''}`}>
-                        <div className="grow" onClick={() => store.status === 'active' && store.closingDay !== today && navigateTo('detail', store.id)}>
+                        <div className="grow" onClick={() => navigateTo('detail', store.id)}>
                             <div className="flex items-center gap-2">
                                 <h2 className="text-lg font-bold">{store.name}</h2>
                                 {store.locationType === 'walk' ? '🚶' : '🏠'}
@@ -314,7 +314,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                             <p className="text-gray-400 text-sm">{store.group} / {store.openingTime} / {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`} / ~{store.numberOfPeople}人</p>
                             <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                         </div>
-                        {store.status === 'active' && (<button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="ml-4 bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>)}
+                        <button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="ml-4 bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>
                          {(store.status === 'unwanted' || store.closingDay === today) && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg"><span className="text-white text-xl font-bold transform -rotate-12">{store.closingDay === today ? '定休日' : '行きたくない'}</span></div>)}
                     </div>
                 ))}
@@ -547,7 +547,7 @@ function AdminCustomerDetailScreen({ customerId, navigateTo }) {
     if (loading) return <div className="p-4 text-center">顧客情報を読み込み中...</div>;
     if (!customer) return <div className="p-4 text-center">顧客情報が見つかりません。</div>;
 
-    const filteredStoresForAdmin = allStores.filter(store => store.name.toLowerCase().includes(storeSearchTerm.toLowerCase()));
+    const filteredStoresForAdmin = allStores.filter(store => store.name.toLowerCase().includes(storeSearchTerm.toLowerCase()) || (store.phoneticName && store.phoneticName.toLowerCase().includes(storeSearchTerm.toLowerCase())));
 
     return (
         <div className="p-4 pb-24">
