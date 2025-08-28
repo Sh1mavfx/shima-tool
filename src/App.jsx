@@ -73,7 +73,6 @@ function App() {
     const [listFilter, setListFilter] = useState('all');
     const [customerId, setCustomerId] = useState(null);
     const [customerData, setCustomerData] = useState(null);
-    const [selectedStoreId, setSelectedStoreId] = useState(null);
     const [adminLoginOpen, setAdminLoginOpen] = useState(false);
     const [selectedAdminCustomerId, setSelectedAdminCustomerId] = useState(null);
     const [editingStore, setEditingStore] = useState(null);
@@ -154,7 +153,6 @@ function App() {
     };
 
     const navigateTo = (targetPage, data = null) => {
-        if (targetPage === 'detail') setSelectedStoreId(data);
         if (targetPage === 'adminCustomerDetail') setSelectedAdminCustomerId(data);
         if (targetPage === 'adminStoreEdit') setEditingStore(data);
         setPage(targetPage);
@@ -224,6 +222,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStore, setSelectedStore] = useState(null);
     const [stoppedStores, setStoppedStores] = useState([]);
+    const [storeToStop, setStoreToStop] = useState(null);
 
     useEffect(() => {
         const fetchStores = async () => {
@@ -247,11 +246,16 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         } catch (e) { console.error("Error updating store status: ", e); }
     };
 
-    const handleStopStore = async (storeId) => {
+    const handleToggleStopStore = async (storeId) => {
         const todayStr = new Date().toISOString().slice(0, 10);
+        let newStoppedStores = [];
         if (customerId) {
-            const stoppedStores = customerData.stoppedStores?.filter(s => s.date === todayStr) || [];
-            const newStoppedStores = [...stoppedStores, { storeId, date: todayStr }];
+            const currentStopped = customerData.stoppedStores?.filter(s => s.date === todayStr) || [];
+            if (currentStopped.some(s => s.storeId === storeId)) {
+                newStoppedStores = currentStopped.filter(s => s.storeId !== storeId);
+            } else {
+                newStoppedStores = [...currentStopped, { storeId, date: todayStr }];
+            }
             const updatedCustomerData = { ...customerData, stoppedStores: newStoppedStores };
             setCustomerData(updatedCustomerData);
             try {
@@ -259,8 +263,13 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                 await updateDoc(customerRef, { stoppedStores: newStoppedStores });
             } catch (e) { console.error("Error stopping store: ", e); }
         } else {
-            setStoppedStores(prev => [...prev, storeId]);
+            if (stoppedStores.includes(storeId)) {
+                setStoppedStores(prev => prev.filter(id => id !== storeId));
+            } else {
+                setStoppedStores(prev => [...prev, storeId]);
+            }
         }
+        setStoreToStop(null);
     };
 
     const combinedStores = useMemo(() => {
@@ -362,7 +371,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                             <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                         </div>
                         <div className="flex items-center">
-                            <button onClick={() => handleStopStore(store.id)} className="mr-2 bg-yellow-600 text-white rounded-full p-2 hover:bg-yellow-700 transition-colors"><Ban className="w-5 h-5" /></button>
+                            <button onClick={() => setStoreToStop(store)} className="mr-2 bg-yellow-600 text-white rounded-full p-2 hover:bg-yellow-700 transition-colors"><Ban className="w-5 h-5" /></button>
                             <button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>
                         </div>
                          {store.closingDay === today && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg pointer-events-none"><span className="text-white text-xl font-bold transform -rotate-12">定休日</span></div>)}
@@ -375,6 +384,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
             {groupFilterModalOpen && <GroupSelectionModal groups={allGroups} onClose={() => setGroupFilterModalOpen(false)} onSelect={(group) => { setSelectedGroup(group); setGroupFilterModalOpen(false); }} />}
             {priceFilterModalOpen && <PriceSelectionModal onClose={() => setPriceFilterModalOpen(false)} onSelect={(range) => { setSelectedPriceRange(range); setPriceFilterModalOpen(false); }} />}
             {numberOfPeopleModalOpen && <NumberOfPeopleSelectionModal onClose={() => setNumberOfPeopleModalOpen(false)} onSelect={(option) => { setSelectedNumberOfPeople(option); setNumberOfPeopleModalOpen(false); }} />}
+            {storeToStop && <ConfirmationModal isOpen={!!storeToStop} onClose={() => setStoreToStop(null)} onConfirm={() => handleToggleStopStore(storeToStop.id)} title="終日ストップ" message={`「${storeToStop.name}」を終日ストップしますか？`} />}
         </div>
     );
 }
@@ -969,7 +979,7 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
                 <p className="text-gray-300 text-center mb-6">{message}</p>
                 <div className="flex gap-4">
                     <button onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">キャンセル</button>
-                    <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">削除</button>
+                    <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">OK</button>
                 </div>
             </div>
         </div>
