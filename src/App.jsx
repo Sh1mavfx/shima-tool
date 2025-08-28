@@ -166,7 +166,6 @@ function App() {
         switch (page) {
             case 'login': return <LoginScreen onLogin={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} setAdminLoginOpen={setAdminLoginOpen} error={error} today={today} />;
             case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} navigateTo={navigateTo} listFilter={listFilter} today={today} />;
-            case 'detail': return <StoreDetailScreen storeId={selectedStoreId} navigateTo={navigateTo} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} />;
             case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} />;
             case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerId={selectedAdminCustomerId} navigateTo={navigateTo} />;
@@ -223,6 +222,8 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     const [selectedNumberOfPeople, setSelectedNumberOfPeople] = useState(null);
     const [allStores, setAllStores] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedStore, setSelectedStore] = useState(null);
+    const [stoppedStores, setStoppedStores] = useState([]);
 
     useEffect(() => {
         const fetchStores = async () => {
@@ -247,16 +248,19 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     };
 
     const handleStopStore = async (storeId) => {
-        if (!customerId) return;
         const todayStr = new Date().toISOString().slice(0, 10);
-        const stoppedStores = customerData.stoppedStores?.filter(s => s.date === todayStr) || [];
-        const newStoppedStores = [...stoppedStores, { storeId, date: todayStr }];
-        const updatedCustomerData = { ...customerData, stoppedStores: newStoppedStores };
-        setCustomerData(updatedCustomerData);
-        try {
-            const customerRef = doc(db, customerCollectionPath, customerId);
-            await updateDoc(customerRef, { stoppedStores: newStoppedStores });
-        } catch (e) { console.error("Error stopping store: ", e); }
+        if (customerId) {
+            const stoppedStores = customerData.stoppedStores?.filter(s => s.date === todayStr) || [];
+            const newStoppedStores = [...stoppedStores, { storeId, date: todayStr }];
+            const updatedCustomerData = { ...customerData, stoppedStores: newStoppedStores };
+            setCustomerData(updatedCustomerData);
+            try {
+                const customerRef = doc(db, customerCollectionPath, customerId);
+                await updateDoc(customerRef, { stoppedStores: newStoppedStores });
+            } catch (e) { console.error("Error stopping store: ", e); }
+        } else {
+            setStoppedStores(prev => [...prev, storeId]);
+        }
     };
 
     const combinedStores = useMemo(() => {
@@ -273,7 +277,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         const todayStr = new Date().toISOString().slice(0, 10);
         const stoppedToday = customerData?.stoppedStores?.filter(s => s.date === todayStr).map(s => s.storeId) || [];
 
-        stores = stores.filter(s => !stoppedToday.includes(s.id));
+        stores = stores.filter(s => !stoppedToday.includes(s.id) && !stoppedStores.includes(s.id));
 
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
@@ -306,11 +310,22 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         });
 
         return [...activeStores, ...unwantedStores, ...closedStores];
-    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople, locationTypeFilter, lateNightFilter, customerData, today]);
+    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople, locationTypeFilter, lateNightFilter, customerData, today, stoppedStores]);
+    
+    const resetFilters = () => {
+        setLocationTypeFilter(null);
+        setLateNightFilter(false);
+        setSelectedGroup(null);
+        setSelectedPriceRange(null);
+        setSelectedIds([]);
+        setSelectedNumberOfPeople(null);
+        setSearchTerm('');
+    };
 
     return (
         <div className="pb-28">
             <header className="p-4 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-10">
+                {!customerId && <button onClick={() => navigateTo('login')} className="absolute top-4 left-4 text-pink-400"><ArrowLeft /> トップに戻る</button>}
                 <h1 className="text-2xl font-bold text-center mb-4">{listFilter === 'visited' ? '行ったことある店' : `${customerData?.nickname || '店舗'}リスト`}</h1>
                 
                 <div className="mb-4">
@@ -324,6 +339,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                 </div>
 
                 <div className="flex space-x-2 overflow-x-auto pb-2 -mx-4 px-4">
+                    <button onClick={resetFilters} className="whitespace-nowrap px-4 py-2 text-sm font-semibold bg-gray-600 rounded-full hover:bg-gray-700 transition-colors">リセット</button>
                     <button onClick={() => setGroupFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedGroup ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>グループ</button>
                     <button onClick={() => setPriceFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedPriceRange ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>料金</button>
                     <button onClick={() => setIdFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedIds.length > 0 ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>身分証</button>
@@ -335,8 +351,8 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
             </header>
             <main className="p-4 space-y-3">
                 {filteredStores.map(store => (
-                    <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' || store.closingDay === today ? 'opacity-40' : ''}`}>
-                        <div className="grow" onClick={() => navigateTo('detail', store.id)}>
+                    <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' ? 'opacity-40' : ''}`}>
+                        <div className="grow" onClick={() => setSelectedStore(store)}>
                             <div className="flex items-center gap-2">
                                 <h2 className="text-lg font-bold">{store.name}</h2>
                                 {store.locationType === 'walk' ? '🚶' : '🏠'}
@@ -345,16 +361,15 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                             <p className="text-gray-400 text-sm">{store.group} / {store.openingTime} / {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`} / ~{store.numberOfPeople}人</p>
                             <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                         </div>
-                        {customerId && (
-                            <div className="flex items-center">
-                                <button onClick={() => handleStopStore(store.id)} className="mr-2 bg-yellow-600 text-white rounded-full p-2 hover:bg-yellow-700 transition-colors"><Ban className="w-5 h-5" /></button>
-                                <button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>
-                            </div>
-                        )}
+                        <div className="flex items-center">
+                            <button onClick={() => handleStopStore(store.id)} className="mr-2 bg-yellow-600 text-white rounded-full p-2 hover:bg-yellow-700 transition-colors"><Ban className="w-5 h-5" /></button>
+                            <button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>
+                        </div>
                          {store.closingDay === today && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg pointer-events-none"><span className="text-white text-xl font-bold transform -rotate-12">定休日</span></div>)}
                     </div>
                 ))}
             </main>
+            {selectedStore && <StoreDetailScreen store={selectedStore} onClose={() => setSelectedStore(null)} />}
             {statusUpdateModal.isOpen && <StatusUpdateModal onClose={() => setStatusUpdateModal({ isOpen: false, storeId: null })} onUpdate={(newStatus) => updateStoreStatus(statusUpdateModal.storeId, newStatus)} />}
             {idFilterModalOpen && <IdSelectionModal currentSelected={selectedIds} onClose={() => setIdFilterModalOpen(false)} onApply={setSelectedIds} />}
             {groupFilterModalOpen && <GroupSelectionModal groups={allGroups} onClose={() => setGroupFilterModalOpen(false)} onSelect={(group) => { setSelectedGroup(group); setGroupFilterModalOpen(false); }} />}
@@ -364,42 +379,30 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     );
 }
 
-function StoreDetailScreen({ storeId, navigateTo }) {
-    const [store, setStore] = useState(null);
-    const [loading, setLoading] = useState(true);
+function StoreDetailScreen({ store, onClose }) {
     const [showPasswordInput, setShowPasswordInput] = useState(false);
     const [password, setPassword] = useState('');
     const [memo, setMemo] = useState('');
     const [memoUnlocked, setMemoUnlocked] = useState(false);
     const [modalMessage, setModalMessage] = useState('');
 
-    useEffect(() => {
-        const fetchStore = async () => {
-            const docRef = doc(db, storeCollectionPath, storeId);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) setStore(docSnap.data());
-            setLoading(false);
-        };
-        if(storeId) fetchStore();
-    }, [storeId]);
-
     const handlePasswordCheck = () => {
         if (password === '1234') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
         else { setModalMessage('パスワードが違います'); }
     };
 
-    if (loading) return <div className="p-4 text-center">読み込み中...</div>;
-    if (!store) return <div className="p-4"><p>店舗情報が見つかりません。</p><button onClick={() => navigateTo('list')} className="mt-4 text-pink-400">一覧に戻る</button></div>;
     return (
-        <div className="p-4 pb-16">
-            {modalMessage && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setModalMessage('')}><div className="bg-gray-800 p-6 rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}><p className="text-white">{modalMessage}</p><button onClick={() => setModalMessage('')} className="mt-4 w-full bg-pink-600 text-white py-2 rounded-lg">閉じる</button></div></div>)}
-            <button onClick={() => navigateTo('list')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />一覧に戻る</button>
-            <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
-            <main className="space-y-6">
-                <div className="bg-gray-800 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>定休日:</strong> {store.closingDay}</li><li><strong>初回時間:</strong> {store.initialTime}分</li><li><strong>初回料金:</strong> {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>遅い時間帯可:</strong> {store.lateNightOption}</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>タグ:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
-                <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
-                <div className="bg-gray-800 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-700 p-3 rounded">{memo}</p><p><strong>バック料金:</strong> {store.backCharge}</p></div>)}</div>
-            </main>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 overflow-y-auto max-h-full" onClick={(e) => e.stopPropagation()}>
+                {modalMessage && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setModalMessage('')}><div className="bg-gray-800 p-6 rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}><p className="text-white">{modalMessage}</p><button onClick={() => setModalMessage('')} className="mt-4 w-full bg-pink-600 text-white py-2 rounded-lg">閉じる</button></div></div>)}
+                <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
+                <main className="space-y-6">
+                    <div className="bg-gray-700 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>定休日:</strong> {store.closingDay}</li><li><strong>初回時間:</strong> {store.initialTime}分</li><li><strong>初回料金:</strong> {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>遅い時間帯可:</strong> {store.lateNightOption}</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>タグ:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-600 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
+                    <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
+                    <div className="bg-gray-700 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-600 p-3 rounded">{memo}</p><p><strong>バック料金:</strong> {store.backCharge}</p></div>)}</div>
+                </main>
+            </div>
         </div>
     );
 }
