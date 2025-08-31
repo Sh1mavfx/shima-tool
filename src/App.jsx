@@ -69,138 +69,16 @@ const initialStoresData = [
 
 // --- Main App Component ---
 function App() {
-    const [page, setPage] = useState('loading');
-    const [user, setUser] = useState(null);
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [page, setPage] = useState('login');
     const [listFilter, setListFilter] = useState('all');
+    const [customerId, setCustomerId] = useState(null);
+    const [customerData, setCustomerData] = useState(null);
+    const [adminLoginOpen, setAdminLoginOpen] = useState(false);
     const [selectedAdminCustomerId, setSelectedAdminCustomerId] = useState(null);
     const [editingStore, setEditingStore] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [today, setToday] = useState('');
-    const [shareId, setShareId] = useState(null);
-
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const id = urlParams.get('shareId');
-        if (id) {
-            setShareId(id);
-            setPage('sharedList');
-        }
-
-        const date = new Date();
-        const days = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
-        setToday(days[date.getDay()]);
-
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                setUser(user);
-                const idTokenResult = await user.getIdTokenResult();
-                setIsAdmin(!!idTokenResult.claims.admin);
-                if (!shareId) setPage(isAdmin ? 'admin' : 'list');
-            } else {
-                setUser(null);
-                setIsAdmin(false);
-                if (!shareId) setPage('login');
-            }
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [shareId]);
-
-    const navigateTo = (targetPage, data = null) => {
-        if (targetPage === 'adminCustomerDetail') setSelectedAdminCustomerId(data);
-        if (targetPage === 'adminStoreEdit') setEditingStore(data);
-        setPage(targetPage);
-    };
-
-    const handleLogout = async () => {
-        await signOut(auth);
-        setPage('login');
-    };
-
-    const renderPage = () => {
-        if (loading) return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading...</div>;
-        switch (page) {
-            case 'login': return <LoginScreen navigateTo={navigateTo} error={error} setError={setError} today={today} />;
-            case 'register': return <RegisterScreen navigateTo={navigateTo} error={error} setError={setError} />;
-            case 'list': return <StoreListScreen user={user} isAdmin={isAdmin} navigateTo={navigateTo} listFilter={listFilter} setListFilter={setListFilter} today={today} />;
-            case 'admin': return <AdminScreen navigateTo={navigateTo} />;
-            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} user={user} isAdmin={isAdmin} />;
-            case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerId={selectedAdminCustomerId} navigateTo={navigateTo} user={user} />;
-            case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
-            case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
-            case 'sharedList': return <SharedListScreen shareId={shareId} />;
-            default: return <LoginScreen navigateTo={navigateTo} error={error} setError={setError} today={today} />;
-        }
-    };
-
-    return (
-        <div className="bg-gray-900 text-white min-h-screen font-sans">
-            <div className="container mx-auto max-w-lg p-0">
-                {renderPage()}
-            </div>
-            {page === 'list' && user && <BottomNavBar currentFilter={listFilter} setFilter={setListFilter} onLogout={handleLogout} isAdmin={isAdmin} navigateTo={navigateTo} />}
-        </div>
-    );
-}
-
-// --- Screen Components ---
-function LoginScreen({ navigateTo, error, setError, today }) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-
-    const handleLogin = async () => {
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-        } catch (e) {
-            setError('メールアドレスまたはパスワードが違います。');
-        }
-    };
-
-    return (
-        <div className="flex flex-col justify-center items-center h-screen p-6 bg-gray-900">
-            <div className="absolute top-5 bg-blue-500 text-white text-center p-2 rounded-lg">本日は{today}です</div>
-            <h1 className="text-4xl font-bold text-pink-400 mb-2">Host-Manager</h1>
-            <p className="text-gray-400 mb-8">スタッフアカウントでログインしてください</p>
-            <div className="w-full max-w-sm">
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white mb-4" />
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white" />
-                <button onClick={handleLogin} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">ログイン</button>
-            </div>
-            <div className="my-6 text-gray-500">または</div>
-            <button onClick={() => navigateTo('register')} className="w-full max-w-sm bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg">新規スタッフ登録</button>
-            {error && <p className="text-red-500 mt-4">{error}</p>}
-        </div>
-    );
-}
-
-function RegisterScreen({ navigateTo, error, setError }) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-
-    const handleRegister = async () => {
-        try {
-            await createUserWithEmailAndPassword(auth, email, password);
-        } catch (e) {
-            setError(e.message);
-        }
-    };
-
-    return (
-        <div className="flex flex-col justify-center items-center h-screen p-6 bg-gray-900">
-            <h1 className="text-4xl font-bold text-pink-400 mb-8">新規スタッフ登録</h1>
-            <div className="w-full max-w-sm">
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white mb-4" />
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white" />
-                <button onClick={handleRegister} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">登録</button>
-            </div>
-            <button onClick={() => navigateTo('login')} className="mt-4 text-pink-400">ログイン画面に戻る</button>
-            {error && <p className="text-red-500 mt-4">{error}</p>}
-        </div>
-    );
-}
 
     useEffect(() => {
         const date = new Date();
