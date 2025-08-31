@@ -1,27 +1,31 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { getApps, initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { getApps, initializeApp } from "firebase/app";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  collection,
+  addDoc,
+  query,
+  getDocs,
+  writeBatch,
+  deleteDoc,
+  where,
+  orderBy,
+} from "firebase/firestore";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 
-// --- Icon Components ---
-const Home = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg> );
-const CheckSquare = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> );
-const LogOut = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> );
-const ArrowLeft = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> );
-const X = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> );
-const MapPin = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> );
-const LinkIcon = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg> );
-const Clipboard = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg> );
-const Shield = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> );
-const Edit = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> );
-const PlusCircle = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> );
-const Trash2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> );
-const User = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> );
-const Smartphone = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> );
-const Ban = (props) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>);
-
-
-// --- Firebase Setup ---
+/*********************************
+ * Firebase Setup
+ *********************************/
 const firebaseConfig = {
   apiKey: "AIzaSyBDXaOWBwJ2-go5e7wGV-ovD4S3Et-E2GY",
   authDomain: "shima-tool.firebaseapp.com",
@@ -29,962 +33,772 @@ const firebaseConfig = {
   storageBucket: "shima-tool.firebasestorage.app",
   messagingSenderId: "1047021803924",
   appId: "1:1047021803924:web:ed63eb1dff81707d8dd781",
-  measurementId: "G-9GE47W77ZR"
+  measurementId: "G-9GE47W77ZR",
 };
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const db = getFirestore(app);
 const auth = getAuth(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+// App-scoped constants (paths)
+// __app_id may be injected by hosting env; fall back to default
+const appId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
 const customerCollectionPath = `artifacts/${appId}/public/data/customers`;
 const storeCollectionPath = `artifacts/${appId}/public/data/stores`;
 
-
-// --- Constant Data ---
-const idTypes = ["運転免許証", "マイナンバー", "パスポート", "保険証", "キャッシュカード", "クレジットカード"];
-const priceFilterRanges = [
-    { label: "無料", min: 0, max: 0 },
-    { label: "~1000円", min: 1, max: 1000 },
-    { label: "~2000円", min: 1001, max: 2000 },
-    { label: "~3000円", min: 2001, max: 3000 },
-    { label: "~5000円", min: 3001, max: 5000 },
-    { label: "~10000円", min: 5001, max: 10000 }
+/*********************************
+ * Utilities
+ *********************************/
+const dayNames = [
+  "日曜日",
+  "月曜日",
+  "火曜日",
+  "水曜日",
+  "木曜日",
+  "金曜日",
+  "土曜日",
 ];
-const numberOfPeopleOptions = [
-    { label: "~1人", value: 1 },
-    { label: "~2人", value: 2 },
-    { label: "~3人", value: 3 },
-    { label: "~4人", value: 4 }
-];
-const lateNightOptions = [
-    { label: "不可", value: "不可" },
-    { label: "23:30~", value: "23:30~" },
-    { label: "23:45~", value: "23:45~" }
-];
+const todayName = () => dayNames[new Date().getDay()];
 
-const initialStoresData = [
-    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', openingTime: '19:00', initialTime: 60, closingDay: '日曜日', lateNightOption: '23:30~', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2, locationType: 'walk', contactType: 'phone' },
-    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', openingTime: '20:00', initialTime: 90, closingDay: '月曜日', lateNightOption: '23:45~', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4, locationType: 'house', contactType: 'phone' },
-    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', openingTime: '18:00', initialTime: 120, closingDay: 'なし', lateNightOption: '不可', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3, locationType: 'walk', contactType: 'none' },
-];
+function cx(...classes) {
+  return classes.filter(Boolean).join(" ");
+}
 
-// --- Main App Component ---
-function App() {
-    const [page, setPage] = useState('login');
-    const [listFilter, setListFilter] = useState('all');
-    const [customerId, setCustomerId] = useState(null);
-    const [customerData, setCustomerData] = useState(null);
-    const [adminLoginOpen, setAdminLoginOpen] = useState(false);
-    const [selectedAdminCustomerId, setSelectedAdminCustomerId] = useState(null);
-    const [editingStore, setEditingStore] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [today, setToday] = useState('');
+/**
+ * Persist UI preferences so the list sort/reset bug is fixed.
+ */
+const UIPREFS_KEY = "storeListUIPrefs:v1";
+function loadUiPrefs() {
+  try {
+    const raw = localStorage.getItem(UIPREFS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+function saveUiPrefs(prefs) {
+  try {
+    localStorage.setItem(UIPREFS_KEY, JSON.stringify(prefs));
+  } catch (_) {}
+}
 
-    useEffect(() => {
-        const date = new Date();
-        const days = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
-        setToday(days[date.getDay()]);
+/*********************************
+ * Root App
+ *********************************/
+export default function App() {
+  const [page, setPage] = useState("staffLogin");
+  const [staffUser, setStaffUser] = useState(null);
+  const [error, setError] = useState("");
+  const [weekday, setWeekday] = useState(todayName());
 
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                try {
-                    const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
-                    if (storesSnapshot.empty) {
-                        const batch = writeBatch(db);
-                        initialStoresData.forEach(store => {
-                            const storeRef = doc(db, storeCollectionPath, store.id);
-                            batch.set(storeRef, store);
-                        });
-                        await batch.commit();
-                    }
-                } catch (setupError) {
-                    console.error("Error during initial store setup:", setupError);
-                    setError("店舗データの初期設定に失敗しました。");
-                }
-                setLoading(false);
-            } else {
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } 
-                    else { await signInAnonymously(auth); }
-                } catch (authError) {
-                    console.error("Firebase Auth Error:", authError);
-                    setError("認証に失敗しました。"); setLoading(false);
-                }
-            }
-        });
-        return () => unsubscribe();
-    }, []);
+  // customer/session state
+  const [customerId, setCustomerId] = useState(null);
+  const [customerData, setCustomerData] = useState(null);
 
-    const loadCustomerData = async (id) => {
-        setError(''); setLoading(true);
-        if (!id) { setError("顧客IDが無効です。"); setLoading(false); return; }
-        try {
-            const docRef = doc(db, customerCollectionPath, id);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setCustomerData(docSnap.data()); setCustomerId(id); setPage('list');
-            } else { setError("指定された顧客IDは存在しません。"); }
-        } catch (e) { console.error("Error loading customer data: ", e); setError("データの読み込みに失敗しました。"); }
-        setLoading(false);
-    };
+  // list UI state (persisted) — prevents reset after returning from detail
+  const [uiPrefs, setUiPrefs] = useState(() =>
+    loadUiPrefs() || {
+      search: "",
+      sortKey: "name",
+      sortDir: "asc",
+      filterVisited: "all", // all | visited | notVisited
+      tagFilters: [],
+    }
+  );
 
-    const createNewCustomer = async () => {
-        setError(''); setLoading(true);
-        try {
-            const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
-            const storeStatuses = storesSnapshot.docs.map(doc => ({ storeId: doc.id, status: 'active' }));
-            const newCustomer = { nickname: "新規顧客", storeStatuses, createdAt: new Date(), preferences: "", possessedIdTypes: [] };
-            
-            const randomPart = Math.random().toString(36).substring(2, 8);
-            const newId = `&${randomPart}`;
+  useEffect(() => setWeekday(todayName()), []);
 
-            const docRef = doc(db, customerCollectionPath, newId);
-            await setDoc(docRef, newCustomer);
-            
-            setCustomerData(newCustomer); setCustomerId(newId); setPage('list'); setListFilter('all');
-        } catch (e) { console.error("Error creating new customer: ", e); setError("新規顧客の作成に失敗しました。"); }
-        setLoading(false);
-    };
-
-    const viewAsGuest = () => {
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setStaffUser(u);
+      setError("");
+      if (!u) {
+        // logout state
+        setPage("staffLogin");
         setCustomerId(null);
         setCustomerData(null);
-        setPage('list');
-    };
+      }
+    });
+    return () => unsub();
+  }, []);
 
-    const navigateTo = (targetPage, data = null) => {
-        if (targetPage === 'adminCustomerDetail') setSelectedAdminCustomerId(data);
-        if (targetPage === 'adminStoreEdit') setEditingStore(data);
-        setPage(targetPage);
-    };
-    const handleLogout = () => { setCustomerId(null); setCustomerData(null); setPage('login'); };
+  useEffect(() => saveUiPrefs(uiPrefs), [uiPrefs]);
 
-    const renderPage = () => {
-        if (loading) return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading...</div>;
-        switch (page) {
-            case 'login': return <LoginScreen onLogin={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} setAdminLoginOpen={setAdminLoginOpen} error={error} today={today} />;
-            case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} navigateTo={navigateTo} listFilter={listFilter} today={today} />;
-            case 'admin': return <AdminScreen navigateTo={navigateTo} />;
-            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} />;
-            case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerId={selectedAdminCustomerId} navigateTo={navigateTo} />;
-            case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
-            case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
-            default: return <LoginScreen onLogin={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} setAdminLoginOpen={setAdminLoginOpen} error={error} today={today} />;
-        }
-    };
+  // --- staff auth handlers ---
+  const handleStaffLogin = async (email, password) => {
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      setStaffUser(cred.user);
+      setPage("customerLogin");
+    } catch (e) {
+      console.error(e);
+      setError("スタッフログインに失敗しました。");
+    }
+  };
+  const handleStaffRegister = async (email, password) => {
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      setStaffUser(cred.user);
+      setPage("customerLogin");
+    } catch (e) {
+      console.error(e);
+      setError("スタッフ登録に失敗しました。");
+    }
+  };
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.error(e);
+    }
+    setStaffUser(null);
+    setCustomerId(null);
+    setCustomerData(null);
+    setPage("staffLogin");
+  };
 
-    return (
-        <div className="bg-gray-900 text-white min-h-screen font-sans">
-            <div className="container mx-auto max-w-lg p-0">
-                {renderPage()}
-                {adminLoginOpen && <AdminLoginModal onClose={() => setAdminLoginOpen(false)} onLoginSuccess={() => { setAdminLoginOpen(false); setPage('admin'); }} />}
-            </div>
-            {page === 'list' && customerId && <BottomNavBar currentFilter={listFilter} setFilter={setListFilter} onLogout={handleLogout}/>}
-        </div>
-    );
+  // --- customer login and creation ---
+  const handleCustomerLogin = async (id) => {
+    setError("");
+    try {
+      const ref = doc(db, customerCollectionPath, id);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        setError("顧客IDが見つかりません。");
+        return;
+      }
+      const data = snap.data();
+      if (!staffUser || data.assignedStaffId !== staffUser.uid) {
+        setError("この顧客はあなたの担当ではありません。");
+        return;
+      }
+      setCustomerId(id);
+      setCustomerData(data);
+      setPage("list");
+    } catch (e) {
+      console.error(e);
+      setError("顧客ログインに失敗しました。");
+    }
+  };
+
+  const handleCreateNewCustomer = async () => {
+    setError("");
+    try {
+      const storesSnap = await getDocs(collection(db, storeCollectionPath));
+      const storeStatuses = storesSnap.docs.map((d) => ({ storeId: d.id, status: "active" }));
+      const newCustomer = {
+        nickname: "新規顧客",
+        storeStatuses,
+        createdAt: new Date(),
+        preferences: "",
+        possessedIdTypes: [],
+        assignedStaffId: staffUser?.uid || null,
+      };
+      const randomPart = Math.random().toString(36).slice(2, 8);
+      const newId = `&${randomPart}`;
+      await setDoc(doc(db, customerCollectionPath, newId), newCustomer);
+      setCustomerId(newId);
+      setCustomerData(newCustomer);
+      setPage("list");
+    } catch (e) {
+      console.error(e);
+      setError("新規顧客の作成に失敗しました。");
+    }
+  };
+
+  // --- routing ---
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {page === "staffLogin" && (
+        <StaffLoginScreen
+          weekday={weekday}
+          error={error}
+          onLogin={handleStaffLogin}
+          onSwitch={() => setPage("staffRegister")}
+        />
+      )}
+      {page === "staffRegister" && (
+        <StaffRegisterScreen
+          error={error}
+          onRegister={handleStaffRegister}
+          onSwitch={() => setPage("staffLogin")}
+        />
+      )}
+      {page === "customerLogin" && staffUser && (
+        <CustomerLoginScreen
+          weekday={weekday}
+          error={error}
+          staffUser={staffUser}
+          onLogin={handleCustomerLogin}
+          onCreate={handleCreateNewCustomer}
+        />
+      )}
+      {page === "list" && staffUser && customerId && customerData && (
+        <StoreShell
+          weekday={weekday}
+          staffUser={staffUser}
+          customerId={customerId}
+          customerData={customerData}
+          setCustomerData={setCustomerData}
+          uiPrefs={uiPrefs}
+          setUiPrefs={setUiPrefs}
+          onLogout={handleLogout}
+        />
+      )}
+    </div>
+  );
 }
 
-// --- Screen Components ---
-
-function LoginScreen({ onLogin, onCreate, onViewAsGuest, setAdminLoginOpen, error, today }) {
-    const [inputId, setInputId] = useState('');
-    return (
-        <div className="flex flex-col justify-center items-center h-screen p-6 bg-gray-900">
-            <div className="absolute top-5 bg-blue-500 text-white text-center p-2 rounded-lg">本日は{today}です</div>
-             <h1 className="text-4xl font-bold text-pink-400 mb-2">Host-Manager</h1>
-            <p className="text-gray-400 mb-8">顧客IDを入力または新規作成してください</p>
-            <div className="w-full max-w-sm">
-                <input type="text" value={inputId} onChange={(e) => setInputId(e.target.value)} placeholder="顧客ID" className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors" />
-                <button onClick={() => onLogin(inputId)} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">ログイン</button>
-            </div>
-            <div className="my-6 text-gray-500">または</div>
-            <button onClick={onCreate} className="w-full max-w-sm bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">新規顧客IDを発行</button>
-            <button onClick={onViewAsGuest} className="w-full max-w-sm mt-4 border-2 border-pink-500 text-pink-500 font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">店舗一覧を見る</button>
-            {error && <p className="text-red-500 mt-4">{error}</p>}
-            <button onClick={() => setAdminLoginOpen(true)} className="absolute bottom-6 right-6 flex items-center gap-2 text-gray-400 hover:text-pink-400 transition-colors"><Shield className="w-5 h-5" />管理者メニュー</button>
-        </div>
-    );
+/*********************************
+ * Screens — Staff Auth
+ *********************************/
+function StaffLoginScreen({ weekday, error, onLogin, onSwitch }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  return (
+    <div className="flex flex-col items-center justify-center h-screen p-6">
+      <div className="absolute top-5 bg-blue-600 text-white px-4 py-1 rounded">本日は{weekday}</div>
+      <div className="w-full max-w-sm bg-gray-800 rounded-2xl p-6 shadow">
+        <h1 className="text-2xl font-bold mb-4">スタッフログイン</h1>
+        <input
+          className="mb-2 p-2 w-full text-black rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="メールアドレス"
+        />
+        <input
+          className="mb-3 p-2 w-full text-black rounded"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="パスワード"
+        />
+        <button
+          className="w-full bg-pink-600 hover:bg-pink-500 transition px-4 py-2 rounded"
+          onClick={() => onLogin(email, password)}
+        >
+          ログイン
+        </button>
+        <button className="mt-4 text-blue-300" onClick={onSwitch}>
+          新規スタッフ登録
+        </button>
+        {error && <p className="text-red-400 mt-2 text-sm">{error}</p>}
+      </div>
+    </div>
+  );
 }
 
-function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo, listFilter, today }) {
-    const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, storeId: null });
-    const [idFilterModalOpen, setIdFilterModalOpen] = useState(false);
-    const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
-    const [priceFilterModalOpen, setPriceFilterModalOpen] = useState(false);
-    const [numberOfPeopleModalOpen, setNumberOfPeopleModalOpen] = useState(false);
-    const [locationTypeFilter, setLocationTypeFilter] = useState(null);
-    const [lateNightFilter, setLateNightFilter] = useState(false);
-    const [selectedGroup, setSelectedGroup] = useState(null);
-    const [selectedPriceRange, setSelectedPriceRange] = useState(null);
-    const [selectedIds, setSelectedIds] = useState([]);
-    const [selectedNumberOfPeople, setSelectedNumberOfPeople] = useState(null);
-    const [allStores, setAllStores] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedStore, setSelectedStore] = useState(null);
-    const [stoppedStores, setStoppedStores] = useState([]);
-    const [storeToStop, setStoreToStop] = useState(null);
-
-    useEffect(() => {
-        const fetchStores = async () => {
-            const querySnapshot = await getDocs(collection(db, storeCollectionPath));
-            setAllStores(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        };
-        fetchStores();
-    }, []);
-
-    const allGroups = useMemo(() => [...new Set(allStores.map(s => s.group) || [])], [allStores]);
-
-    const updateStoreStatus = async (storeId, newStatus) => {
-        if (!customerId) return;
-        const newStoreStatuses = customerData.storeStatuses.map(s => s.storeId === storeId ? { ...s, status: newStatus } : s);
-        const updatedCustomerData = { ...customerData, storeStatuses: newStoreStatuses };
-        setCustomerData(updatedCustomerData);
-        setStatusUpdateModal({ isOpen: false, storeId: null });
-        try {
-            const customerRef = doc(db, customerCollectionPath, customerId);
-            await updateDoc(customerRef, { storeStatuses: newStoreStatuses });
-        } catch (e) { console.error("Error updating store status: ", e); }
-    };
-
-    const handleToggleStopStore = async (storeId) => {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        let currentStopped, newStoppedStores;
-
-        if (customerId) {
-            currentStopped = customerData.stoppedStores?.filter(s => s.date === todayStr) || [];
-            if (currentStopped.some(s => s.storeId === storeId)) {
-                newStoppedStores = currentStopped.filter(s => s.storeId !== storeId);
-            } else {
-                newStoppedStores = [...currentStopped, { storeId, date: todayStr }];
-            }
-            const updatedCustomerData = { ...customerData, stoppedStores: newStoppedStores };
-            setCustomerData(updatedCustomerData);
-            try {
-                const customerRef = doc(db, customerCollectionPath, customerId);
-                await updateDoc(customerRef, { stoppedStores: newStoppedStores });
-            } catch (e) { console.error("Error stopping store: ", e); }
-        } else {
-            if (stoppedStores.includes(storeId)) {
-                setStoppedStores(prev => prev.filter(id => id !== storeId));
-            } else {
-                setStoppedStores(prev => [...prev, storeId]);
-            }
-        }
-        setStoreToStop(null);
-    };
-    
-    const combinedStores = useMemo(() => {
-        if (!allStores.length) return [];
-        if (!customerData) return allStores.map(store => ({...store, status: 'active'}));
-        return allStores.map(store => {
-            const statusInfo = customerData.storeStatuses.find(s => s.storeId === store.id);
-            return { ...store, status: statusInfo?.status || 'active' };
-        });
-    }, [allStores, customerData]);
-
-    const filteredStores = useMemo(() => {
-        let stores = [...combinedStores];
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const stoppedToday = customerId ? customerData?.stoppedStores?.filter(s => s.date === todayStr).map(s => s.storeId) || [] : stoppedStores;
-
-        stores = stores.filter(s => !stoppedToday.includes(s.id));
-
-        if (searchTerm) {
-            const lowercasedTerm = searchTerm.toLowerCase();
-            stores = stores.filter(s =>
-                s.name.toLowerCase().includes(lowercasedTerm) ||
-                s.group.toLowerCase().includes(lowercasedTerm) ||
-                (s.phoneticName && s.phoneticName.toLowerCase().includes(lowercasedTerm)) ||
-                (s.tags && s.tags.some(tag => tag.toLowerCase().includes(lowercasedTerm)))
-            );
-        }
-
-        if (listFilter === 'visited') stores = stores.filter(s => s.status === 'visited');
-        else if (customerId) stores = stores.filter(s => s.status === 'active' || s.status === 'unwanted');
-        
-        if (selectedGroup) stores = stores.filter(s => s.group === selectedGroup);
-        if (selectedPriceRange) stores = stores.filter(s => s.initialPriceMin >= selectedPriceRange.min && s.initialPriceMin <= selectedPriceRange.max);
-        if (selectedIds.length > 0) stores = stores.filter(s => selectedIds.every(id => s.requiredIds.includes(id)));
-        if (selectedNumberOfPeople) stores = stores.filter(s => s.numberOfPeople >= selectedNumberOfPeople.value);
-        if (locationTypeFilter) stores = stores.filter(s => s.locationType === locationTypeFilter);
-        if (lateNightFilter) stores = stores.filter(s => s.lateNightOption !== '不可');
-
-        const activeStores = stores.filter(s => s.closingDay !== today && s.status !== 'unwanted');
-        const unwantedStores = stores.filter(s => s.status === 'unwanted');
-        const closedStores = stores.filter(s => s.closingDay === today);
-
-        activeStores.sort((a, b) => {
-            const backChargeA = parseInt(a.backCharge.replace(/[^0-9]/g, ''), 10) || 0;
-            const backChargeB = parseInt(b.backCharge.replace(/[^0-9]/g, ''), 10) || 0;
-            return backChargeB - backChargeA;
-        });
-
-        return [...activeStores, ...unwantedStores, ...closedStores];
-    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople, locationTypeFilter, lateNightFilter, customerData, today, stoppedStores, customerId]);
-    
-    const resetFilters = () => {
-        setLocationTypeFilter(null);
-        setLateNightFilter(false);
-        setSelectedGroup(null);
-        setSelectedPriceRange(null);
-        setSelectedIds([]);
-        setSelectedNumberOfPeople(null);
-        setSearchTerm('');
-    };
-
-    return (
-        <div className="pb-28">
-            <header className="p-4 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-10">
-                {!customerId && <button onClick={() => navigateTo('login')} className="absolute top-4 left-4 text-pink-400"><ArrowLeft /> トップに戻る</button>}
-                <h1 className="text-2xl font-bold text-center mb-4">{listFilter === 'visited' ? '行ったことある店' : `${customerData?.nickname || '店舗'}リスト`}</h1>
-                
-                <div className="mb-4">
-                    <input
-                        type="text"
-                        placeholder="店名、グループ、タグ、読み仮名で検索..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
-                    />
-                </div>
-
-                <div className="flex space-x-2 overflow-x-auto pb-2 -mx-4 px-4">
-                    <button onClick={resetFilters} className="whitespace-nowrap px-4 py-2 text-sm font-semibold bg-gray-600 rounded-full hover:bg-gray-700 transition-colors">リセット</button>
-                    <button onClick={() => setGroupFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedGroup ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>グループ</button>
-                    <button onClick={() => setPriceFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedPriceRange ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>料金</button>
-                    <button onClick={() => setIdFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedIds.length > 0 ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>身分証</button>
-                    <button onClick={() => setNumberOfPeopleModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedNumberOfPeople ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>人数</button>
-                    <button onClick={() => setLocationTypeFilter(locationTypeFilter === 'walk' ? null : 'walk')} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${locationTypeFilter === 'walk' ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>🚶</button>
-                    <button onClick={() => setLocationTypeFilter(locationTypeFilter === 'house' ? null : 'house')} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${locationTypeFilter === 'house' ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>🏠</button>
-                    <button onClick={() => setLateNightFilter(!lateNightFilter)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${lateNightFilter ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>遅い時間帯可</button>
-                </div>
-            </header>
-            <main className="p-4 space-y-3">
-                {filteredStores.map(store => (
-                    <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' ? 'opacity-40' : ''}`}>
-                        <div className="grow" onClick={() => setSelectedStore(store)}>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-lg font-bold">{store.name}</h2>
-                                {store.locationType === 'walk' ? '🚶' : '🏠'}
-                                {store.contactType === 'phone' ? '📱' : '❌'}
-                            </div>
-                            <p className="text-gray-400 text-sm">{store.group} / {store.openingTime} / {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`} / ~{store.numberOfPeople}人</p>
-                            <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
-                        </div>
-                        <div className="flex items-center">
-                            <button onClick={() => setStoreToStop(store)} className="mr-2 bg-yellow-600 text-white rounded-full p-2 hover:bg-yellow-700 transition-colors"><Ban className="w-5 h-5" /></button>
-                            <button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>
-                        </div>
-                         {store.closingDay === today && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg pointer-events-none"><span className="text-white text-xl font-bold transform -rotate-12">定休日</span></div>)}
-                    </div>
-                ))}
-            </main>
-            {selectedStore && <StoreDetailScreen store={selectedStore} onClose={() => setSelectedStore(null)} />}
-            {statusUpdateModal.isOpen && <StatusUpdateModal onClose={() => setStatusUpdateModal({ isOpen: false, storeId: null })} onUpdate={(newStatus) => updateStoreStatus(statusUpdateModal.storeId, newStatus)} />}
-            {idFilterModalOpen && <IdSelectionModal currentSelected={selectedIds} onClose={() => setIdFilterModalOpen(false)} onApply={setSelectedIds} />}
-            {groupFilterModalOpen && <GroupSelectionModal groups={allGroups} onClose={() => setGroupFilterModalOpen(false)} onSelect={(group) => { setSelectedGroup(group); setGroupFilterModalOpen(false); }} />}
-            {priceFilterModalOpen && <PriceSelectionModal onClose={() => setPriceFilterModalOpen(false)} onSelect={(range) => { setSelectedPriceRange(range); setPriceFilterModalOpen(false); }} />}
-            {numberOfPeopleModalOpen && <NumberOfPeopleSelectionModal onClose={() => setNumberOfPeopleModalOpen(false)} onSelect={(option) => { setSelectedNumberOfPeople(option); setNumberOfPeopleModalOpen(false); }} />}
-            {storeToStop && <ConfirmationModal isOpen={!!storeToStop} onClose={() => setStoreToStop(null)} onConfirm={() => handleToggleStopStore(storeToStop.id)} title="終日ストップ" message={`「${storeToStop.name}」を終日ストップしますか？`} />}
-        </div>
-    );
+function StaffRegisterScreen({ error, onRegister, onSwitch }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  return (
+    <div className="flex flex-col items-center justify-center h-screen p-6">
+      <div className="w-full max-w-sm bg-gray-800 rounded-2xl p-6 shadow">
+        <h1 className="text-2xl font-bold mb-4">スタッフ新規登録</h1>
+        <input
+          className="mb-2 p-2 w-full text-black rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="メールアドレス"
+        />
+        <input
+          className="mb-3 p-2 w-full text-black rounded"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="パスワード"
+        />
+        <button
+          className="w-full bg-pink-600 hover:bg-pink-500 transition px-4 py-2 rounded"
+          onClick={() => onRegister(email, password)}
+        >
+          登録
+        </button>
+        <button className="mt-4 text-blue-300" onClick={onSwitch}>
+          ログイン画面へ戻る
+        </button>
+        {error && <p className="text-red-400 mt-2 text-sm">{error}</p>}
+      </div>
+    </div>
+  );
 }
 
-function StoreDetailScreen({ store, onClose }) {
-    const [showPasswordInput, setShowPasswordInput] = useState(false);
-    const [password, setPassword] = useState('');
-    const [memo, setMemo] = useState('');
-    const [memoUnlocked, setMemoUnlocked] = useState(false);
-    const [modalMessage, setModalMessage] = useState('');
+/*********************************
+ * Screen — Customer Login (restrict to assignedStaffId)
+ *********************************/
+function CustomerLoginScreen({ weekday, error, staffUser, onLogin, onCreate }) {
+  const [inputId, setInputId] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    const handlePasswordCheck = () => {
-        if (password === '1234') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
-        else { setModalMessage('パスワードが違います'); }
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const q = query(
+          collection(db, customerCollectionPath),
+          where("assignedStaffId", "==", staffUser.uid)
+        );
+        const snap = await getDocs(q);
+        if (!active) return;
+        setCustomers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } finally {
+        if (active) setLoading(false);
+      }
     };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [staffUser?.uid]);
 
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 overflow-y-auto max-h-full" onClick={(e) => e.stopPropagation()}>
-                {modalMessage && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setModalMessage('')}><div className="bg-gray-800 p-6 rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}><p className="text-white">{modalMessage}</p><button onClick={() => setModalMessage('')} className="mt-4 w-full bg-pink-600 text-white py-2 rounded-lg">閉じる</button></div></div>)}
-                <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
-                <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
-                <main className="space-y-6">
-                    <div className="bg-gray-700 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>定休日:</strong> {store.closingDay}</li><li><strong>初回時間:</strong> {store.initialTime}分</li><li><strong>初回料金:</strong> {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>遅い時間帯可:</strong> {store.lateNightOption}</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>タグ:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-600 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
-                    <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
-                    <div className="bg-gray-700 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-600 p-3 rounded">{memo}</p><p><strong>バック料金:</strong> {store.backCharge}</p></div>)}</div>
-                </main>
-            </div>
+  return (
+    <div className="flex flex-col items-center min-h-screen p-6">
+      <div className="sticky top-0 w-full max-w-2xl bg-gray-900/80 backdrop-blur z-10 py-3">
+        <div className="text-sm text-gray-300">本日は{weekday}</div>
+        <h1 className="text-2xl font-bold">顧客ログイン</h1>
+      </div>
+
+      <div className="w-full max-w-2xl mt-4 bg-gray-800 rounded-2xl p-4">
+        <div className="flex gap-2">
+          <input
+            className="flex-1 p-2 rounded text-black"
+            value={inputId}
+            onChange={(e) => setInputId(e.target.value)}
+            placeholder="顧客IDを入力"
+          />
+          <button
+            className="px-4 py-2 rounded bg-pink-600 hover:bg-pink-500"
+            onClick={() => onLogin(inputId)}
+          >
+            顧客IDでログイン
+          </button>
+          <button
+            className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600"
+            onClick={onCreate}
+          >
+            新規顧客作成
+          </button>
         </div>
-    );
-}
+        {error && <p className="text-red-400 mt-2 text-sm">{error}</p>}
+      </div>
 
-function AdminScreen({ navigateTo }) {
-    return (
-        <div className="p-4">
-            <button onClick={() => navigateTo('login')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />トップに戻る</button>
-            <h1 className="text-2xl font-bold text-center mb-6">管理者メニュー</h1>
-            <div className="space-y-4">
-                <button onClick={() => navigateTo('adminStores')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
-                    <h2 className="text-lg font-bold">店舗情報管理</h2>
-                    <p className="text-sm text-gray-400">店舗の追加、編集を行います</p>
-                </button>
-                 <button onClick={() => navigateTo('adminCustomers')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
-                    <h2 className="text-lg font-bold">顧客管理</h2>
-                    <p className="text-sm text-gray-400">顧客のメモや利用状況を確認します</p>
-                </button>
-            </div>
-        </div>
-    );
-}
-
-function AdminCustomersScreen({ navigateTo }) {
-    const [customers, setCustomers] = useState([]);
-    const [toast, setToast] = useState('');
-    const [customerToDelete, setCustomerToDelete] = useState(null); // 削除確認用
-
-    const fetchCustomers = async () => {
-        try {
-            const q = query(collection(db, customerCollectionPath));
-            const querySnapshot = await getDocs(q);
-            const customersList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setCustomers(customersList);
-        } catch (error) { console.error("Error fetching customers: ", error); }
-    };
-
-    useEffect(() => {
-        fetchCustomers();
-    }, []);
-
-    const copyToClipboard = (text) => {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed"; textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        try { document.execCommand('copy'); setToast('IDをコピーしました！'); setTimeout(() => setToast(''), 2000); } 
-        catch (err) { console.error('Failed to copy: ', err); }
-        document.body.removeChild(textArea);
-    };
-
-    // 顧客削除処理
-    const handleDeleteCustomer = async () => {
-        if (!customerToDelete) return;
-        try {
-            await deleteDoc(doc(db, customerCollectionPath, customerToDelete.id));
-            setToast(`顧客「${customerToDelete.nickname}」を削除しました。`);
-            setCustomerToDelete(null);
-            fetchCustomers(); // リストを再読み込み
-        } catch (error) {
-            console.error("Error deleting customer: ", error);
-            setToast('顧客の削除に失敗しました。');
-        }
-        setTimeout(() => setToast(''), 3000);
-    };
-
-    return (
-        <div className="p-4">
-            {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
-            <div className="flex justify-between items-center mb-6">
-                 <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-pink-400"><ArrowLeft />管理メニュー</button>
-                 <h1 className="text-2xl font-bold">顧客管理</h1>
-                 <div className="w-16"></div>
-            </div>
-            <div className="space-y-3">
-                {customers.map(customer => (
-                    <div key={customer.id} className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
-                        <div onClick={() => navigateTo('adminCustomerDetail', customer.id)} className="cursor-pointer grow">
-                            <p className="font-bold">{customer.nickname}</p>
-                            <p className="text-xs text-gray-400 truncate">ID: {customer.id}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => copyToClipboard(customer.id)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Clipboard className="w-5 h-5" /></button>
-                            {/* 削除ボタンを追加 */}
-                            <button onClick={() => setCustomerToDelete(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-red-500"><Trash2 className="w-5 h-5" /></button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            {/* 削除確認モーダル */}
-            <ConfirmationModal 
-                isOpen={!!customerToDelete}
-                onClose={() => setCustomerToDelete(null)}
-                onConfirm={handleDeleteCustomer}
-                title="顧客の削除"
-                message={`本当に顧客「${customerToDelete?.nickname}」を削除しますか？この操作は元に戻せません。`}
-            />
-        </div>
-    );
-}
-
-function AdminCustomerDetailScreen({ customerId, navigateTo }) {
-    const [customer, setCustomer] = useState(null);
-    const [allStores, setAllStores] = useState([]);
-    const [preferences, setPreferences] = useState('');
-    const [nickname, setNickname] = useState(''); // ニックネーム編集用のstate
-    const [loading, setLoading] = useState(true);
-    const [toast, setToast] = useState('');
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // 削除確認モーダル用
-    const [storeSearchTerm, setStoreSearchTerm] = useState('');
-
-    useEffect(() => {
-        const fetchAllData = async () => {
-            if (!customerId) return;
-            setLoading(true);
-            try {
-                const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
-                const storesData = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setAllStores(storesData);
-                const docRef = doc(db, customerCollectionPath, customerId);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setCustomer(data);
-                    setPreferences(data.preferences || '');
-                    setNickname(data.nickname || ''); // ニックネームをstateにセット
-                }
-            } catch (error) { console.error("Error fetching customer details: ", error); }
-            setLoading(false);
-        };
-        fetchAllData();
-    }, [customerId]);
-
-    // 保存処理（ニックネームも保存）
-    const handleSave = async () => {
-        try {
-            const customerRef = doc(db, customerCollectionPath, customerId);
-            await updateDoc(customerRef, { 
-                preferences: preferences,
-                nickname: nickname,
-                storeStatuses: customer.storeStatuses,
-                possessedIdTypes: customer.possessedIdTypes,
-            });
-            setToast('保存しました！'); setTimeout(() => setToast(''), 2000);
-        } catch (error) {
-            console.error("Error saving customer data: ", error);
-            setToast('保存に失敗しました。'); setTimeout(() => setToast(''), 2000);
-        }
-    };
-
-    // 顧客削除処理
-    const handleDelete = async () => {
-        try {
-            await deleteDoc(doc(db, customerCollectionPath, customerId));
-            setIsDeleteModalOpen(false);
-            setToast('顧客を削除しました。');
-            setTimeout(() => navigateTo('adminCustomers'), 1500);
-        } catch (error) {
-            console.error("Error deleting customer: ", error);
-            setToast('削除に失敗しました。');
-            setTimeout(() => setToast(''), 2000);
-        }
-    };
-
-    const handleStoreStatusChange = (storeId, newStatus) => {
-	let newStoreStatuses = [];
-	if (customer.storeStatuses.some(s => s.storeId === storeId)) {
-	  newStoreStatuses = customer.storeStatuses.map(s =>
-	    s.storeId === storeId ? { ...s, status: newStatus } : s
-	  );
-	} else {
-	    newStoreStatuses = [...customer.storeStatuses, { storeId, status: newStatus }];
-	}
-	  setCustomer(prev => ({ ...prev, storeStatuses: newStoreStatuses }));
-    };
-
-    const handleIdTypeChange = (idType) => {
-        const possessedIdTypes = customer.possessedIdTypes || [];
-        const newIdTypes = possessedIdTypes.includes(idType)
-            ? possessedIdTypes.filter(id => id !== idType)
-            : [...possessedIdTypes, idType];
-        setCustomer(prev => ({ ...prev, possessedIdTypes: newIdTypes }));
-    };
-
-    if (loading) return <div className="p-4 text-center">顧客情報を読み込み中...</div>;
-    if (!customer) return <div className="p-4 text-center">顧客情報が見つかりません。</div>;
-
-    const filteredStoresForAdmin = allStores.filter(store => store.name.toLowerCase().includes(storeSearchTerm.toLowerCase()) || (store.phoneticName && store.phoneticName.toLowerCase().includes(storeSearchTerm.toLowerCase())));
-
-    return (
-        <div className="p-4 pb-24">
-            {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
-            <button onClick={() => navigateTo('adminCustomers')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />顧客管理に戻る</button>
-            
-            {/* ニックネームを編集可能な入力フィールドに変更 */}
-            <div className="mb-4">
-                <label className="text-sm text-gray-400">ニックネーム</label>
-                <input 
-                    type="text"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className="w-full p-2 bg-gray-800 rounded-md mt-1 text-2xl font-bold"
-                />
-            </div>
-
-            <div className="bg-gray-800 p-4 rounded-lg mb-6">
-                <h2 className="font-bold text-lg mb-2">行ったことある店</h2>
-                <input
-                    type="text"
-                    placeholder="店舗名で検索..."
-                    value={storeSearchTerm}
-                    onChange={(e) => setStoreSearchTerm(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 mb-4"
-                />
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                    {filteredStoresForAdmin.map(store => (
-                        <label key={store.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
-                            <input
-                                type="checkbox"
-                                checked={customer.storeStatuses.some(s => s.storeId === store.id && s.status === 'visited')}
-                                onChange={() => handleStoreStatusChange(store.id, customer.storeStatuses.some(s => s.storeId === store.id && s.status === 'visited') ? 'active' : 'visited')}
-                                className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"
-                            />
-                            <span>{store.name}</span>
-                        </label>
-                    ))}
-                </div>
-            </div>
-
-            <div className="bg-gray-800 p-4 rounded-lg mb-6">
-                <h2 className="font-bold text-lg mb-2">所持している本人確認書類</h2>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                    {idTypes.map(idType => (
-                        <label key={idType} className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
-                            <input
-                                type="checkbox"
-                                checked={customer.possessedIdTypes?.includes(idType)}
-                                onChange={() => handleIdTypeChange(idType)}
-                                className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"
-                            />
-                            <span>{idType}</span>
-                        </label>
-                    ))}
-                </div>
-            </div>
-
-            <div className="bg-gray-800 p-4 rounded-lg">
-                <h2 className="font-bold text-lg mb-2">お店の好み（メモ）</h2>
-                <textarea value={preferences} onChange={(e) => setPreferences(e.target.value)} className="w-full h-32 p-2 bg-gray-700 rounded-md text-white" placeholder="例：静かなお店が好き、シャンパンコールは苦手など"></textarea>
-            </div>
-            <div className="mt-6 space-y-3">
-                 <button onClick={handleSave} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">保存</button>
-                 {/* 顧客削除ボタン */}
-                 <button onClick={() => setIsDeleteModalOpen(true)} className="w-full bg-red-800 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg">この顧客を削除する</button>
-            </div>
-            
-            {/* 削除確認モーダル */}
-            <ConfirmationModal 
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                onConfirm={handleDelete}
-                title="顧客の削除"
-                message={`本当に顧客「${nickname}」を削除しますか？この操作は元に戻せません。`}
-            />
-        </div>
-    );
-}
-
-function AdminStoresScreen({ navigateTo }) {
-    const [stores, setStores] = useState([]);
-    const [loading, setLoading] = useState(true);
-    useEffect(() => {
-	const fetchStores = async () => {
-	  const querySnapshot = await getDocs(collection(db, storeCollectionPath));
-	  const fetchedStores = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-	  fetchedStores.sort((a, b) => a.name.localeCompare(b.name)); // アルファベット順にソート
-	  setStores(fetchedStores);
-	  setLoading(false);
-	};
-	fetchStores();
-    }, []);
-
-    if (loading) return <div className="p-4 text-center">店舗情報を読み込み中...</div>;
-
-    return (
-        <div className="p-4">
-            <div className="flex justify-between items-center mb-6">
-                <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-pink-400"><ArrowLeft />管理メニュー</button>
-                <h1 className="text-2xl font-bold">店舗管理</h1>
-                <div className="w-16"></div>
-            </div>
-            <button onClick={() => navigateTo('adminStoreEdit', null)} className="w-full mb-4 flex items-center justify-center gap-2 p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700"><PlusCircle/>新規店舗を追加</button>
-            <div className="space-y-3">
-                {stores.map(store => (
-                    <div key={store.id} className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
-                        <div><p className="font-bold">{store.name}</p><p className="text-xs text-gray-400">{store.group}</p></div>
-                        <button onClick={() => navigateTo('adminStoreEdit', store)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Edit className="w-5 h-5" /></button>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function AdminStoreEditScreen({ store, navigateTo }) {
-    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialTime: '', closingDay: '', lateNightOption: '不可', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
-    const [hasPriceRange, setHasPriceRange] = useState(false);
-    const [toast, setToast] = useState('');
-
-    useEffect(() => {
-        if (store) {
-            const isRange = store.initialPriceMin !== store.initialPriceMax;
-            setHasPriceRange(isRange);
-            setFormData({ 
-                ...store, 
-                phoneticName: store.phoneticName || '',
-                openingTime: store.openingTime || '',
-                initialTime: store.initialTime || '',
-                closingDay: store.closingDay || '',
-                lateNightOption: store.lateNightOption || '不可',
-                tags: store.tags.join(', '), 
-                requiredIds: store.requiredIds || [],
-                initialPriceMin: store.initialPriceMin || '',
-                initialPriceMax: isRange ? (store.initialPriceMax || '') : '',
-                numberOfPeople: store.numberOfPeople || 1,
-                locationType: store.locationType || 'walk',
-                contactType: store.contactType || 'phone'
-            });
-        }
-    }, [store]);
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    };
-
-    const handleIdChange = (id) => {
-        setFormData(prev => {
-            const newIds = prev.requiredIds.includes(id) ? prev.requiredIds.filter(i => i !== id) : [...prev.requiredIds, id];
-            return { ...prev, requiredIds: newIds };
-        });
-    };
-
-    const handleAttributeChange = (name, value) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSave = async () => {
-        const minPrice = Number(formData.initialPriceMin) || 0;
-        const maxPrice = hasPriceRange ? (Number(formData.initialPriceMax) || minPrice) : minPrice;
-
-        const dataToSave = {
-            ...formData,
-            initialPriceMin: minPrice,
-            initialPriceMax: maxPrice,
-            initialPriceText: hasPriceRange ? `${minPrice}円~${maxPrice}円` : `${minPrice}円`,
-            tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
-            numberOfPeople: Number(formData.numberOfPeople) || 1,
-            initialTime: Number(formData.initialTime) || 0
-        };
-        
-        try {
-            if (store) {
-                await setDoc(doc(db, storeCollectionPath, store.id), dataToSave);
-            } else {
-                await addDoc(collection(db, storeCollectionPath), dataToSave);
-            }
-            setToast('保存しました！');
-            setTimeout(() => navigateTo('adminStores'), 1500);
-        } catch (e) {
-            console.error("Error saving store: ", e);
-            setToast('保存に失敗しました。');
-            setTimeout(() => setToast(''), 2000);
-        }
-    };
-
-    return (
-        <div className="p-4 pb-10">
-            {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
-            <button onClick={() => navigateTo('adminStores')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />店舗管理に戻る</button>
-            <h1 className="text-2xl font-bold mb-6">{store ? '店舗情報を編集' : '新規店舗を追加'}</h1>
-            <div className="space-y-4">
-                <div><label className="text-sm text-gray-400">店名</label><input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">グループ</label><input type="text" name="group" value={formData.group} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">読み仮名 / 通称</label><input type="text" name="phoneticName" value={formData.phoneticName} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">営業時間</label><input type="text" name="openingTime" value={formData.openingTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">初回時間 (分)</label><input type="number" name="initialTime" value={formData.initialTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">定休日</label><input type="text" name="closingDay" value={formData.closingDay} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                
+      <div className="w-full max-w-2xl mt-6">
+        <h2 className="font-bold mb-2">担当顧客一覧</h2>
+        {loading ? (
+          <div className="text-gray-400">読み込み中...</div>
+        ) : customers.length === 0 ? (
+          <div className="text-gray-400">担当顧客がいません。新規作成してください。</div>
+        ) : (
+          <ul className="grid sm:grid-cols-2 gap-2">
+            {customers.map((c) => (
+              <li key={c.id} className="bg-gray-800 rounded-xl p-3 flex items-center justify-between">
                 <div>
-                    <label className="text-sm text-gray-400">遅い時間帯可</label>
-                    <div className="flex gap-2 mt-1">
-                        {lateNightOptions.map(option => (
-                            <button key={option.value} onClick={() => handleAttributeChange('lateNightOption', option.value)} className={`px-4 py-2 rounded-full text-sm ${formData.lateNightOption === option.value ? 'bg-pink-500' : 'bg-gray-700'}`}>{option.label}</button>
-                        ))}
-                    </div>
+                  <div className="font-semibold">{c.nickname || "(名称未設定)"}</div>
+                  <div className="text-xs text-gray-400">{c.id}</div>
                 </div>
+                <button
+                  className="px-3 py-1 rounded bg-green-600 hover:bg-green-500 text-sm"
+                  onClick={() => onLogin(c.id)}
+                >
+                  この顧客で入る
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
 
-                <div>
-                    <label className="flex items-center gap-2 text-sm text-gray-400">
-                        <input type="checkbox" checked={hasPriceRange} onChange={(e) => setHasPriceRange(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
-                        <span>料金に差がある</span>
-                    </label>
-                </div>
+/*********************************
+ * Shell — List + Detail (preserve UI state)
+ *********************************/
+function StoreShell({
+  weekday,
+  staffUser,
+  customerId,
+  customerData,
+  setCustomerData,
+  uiPrefs,
+  setUiPrefs,
+  onLogout,
+}) {
+  const [view, setView] = useState({ name: "list", storeId: null });
 
-                {hasPriceRange ? (
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-sm text-gray-400">最低料金 (円)</label><input type="number" name="initialPriceMin" value={formData.initialPriceMin} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                        <div><label className="text-sm text-gray-400">最高料金 (円)</label><input type="number" name="initialPriceMax" value={formData.initialPriceMax} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                    </div>
-                ) : (
-                    <div><label className="text-sm text-gray-400">初回料金 (円)</label><input type="number" name="initialPriceMin" value={formData.initialPriceMin} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+  const handleEnterDetail = (storeId) => setView({ name: "detail", storeId });
+  const handleBackToList = () => setView({ name: "list", storeId: null });
+
+  // Mutations that persist to Firestore and update local state
+  const updateStoreStatus = async (storeId, nextStatus) => {
+    const statuses = Array.isArray(customerData.storeStatuses)
+      ? [...customerData.storeStatuses]
+      : [];
+    const idx = statuses.findIndex((s) => s.storeId === storeId);
+    if (idx >= 0) statuses[idx] = { ...statuses[idx], status: nextStatus };
+    else statuses.push({ storeId, status: nextStatus });
+
+    const next = { ...customerData, storeStatuses: statuses };
+    setCustomerData(next);
+    try {
+      await updateDoc(doc(db, customerCollectionPath, customerId), {
+        storeStatuses: statuses,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-20 bg-gray-900/80 backdrop-blur border-b border-white/10">
+        <div className="max-w-5xl mx-auto p-3 flex items-center justify-between">
+          <div>
+            <div className="text-xs text-gray-400">{weekday}</div>
+            <div className="font-semibold">顧客: {customerData?.nickname || customerId}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 hidden sm:block">{staffUser?.email}</span>
+            <button className="text-red-400 hover:text-red-300" onClick={onLogout}>
+              ログアウト
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {view.name === "list" && (
+        <StoreListScreen
+          uiPrefs={uiPrefs}
+          setUiPrefs={setUiPrefs}
+          customerData={customerData}
+          onToggleVisited={(storeId, visited) =>
+            updateStoreStatus(storeId, visited ? "visited" : "active")
+          }
+          onOpenDetail={handleEnterDetail}
+        />
+      )}
+
+      {view.name === "detail" && (
+        <StoreDetailScreen
+          storeId={view.storeId}
+          customerData={customerData}
+          onBack={handleBackToList}
+          onMarkVisited={(storeId) => updateStoreStatus(storeId, "visited")}
+        />
+      )}
+    </div>
+  );
+}
+
+/*********************************
+ * Store List (full version, with search/filter/sort and stable UI state)
+ *********************************/
+function StoreListScreen({ uiPrefs, setUiPrefs, customerData, onToggleVisited, onOpenDetail }) {
+  const [allStores, setAllStores] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // load stores once
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const snap = await getDocs(collection(db, storeCollectionPath));
+        if (!active) return;
+        setAllStores(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const statusMap = useMemo(() => {
+    const m = new Map();
+    for (const s of customerData?.storeStatuses || []) m.set(s.storeId, s.status || "active");
+    return m;
+  }, [customerData?.storeStatuses]);
+
+  // derived list with status
+  const decorated = useMemo(() => {
+    return allStores.map((s) => ({ ...s, __status: statusMap.get(s.id) || "active" }));
+  }, [allStores, statusMap]);
+
+  // filtering
+  const filtered = useMemo(() => {
+    let list = [...decorated];
+    const term = (uiPrefs.search || "").trim().toLowerCase();
+    if (term) {
+      list = list.filter((s) =>
+        (s.name || "").toLowerCase().includes(term) ||
+        (s.group || "").toLowerCase().includes(term) ||
+        (Array.isArray(s.tags) && s.tags.some((t) => (t || "").toLowerCase().includes(term)))
+      );
+    }
+    // tag filters (chips)
+    if (Array.isArray(uiPrefs.tagFilters) && uiPrefs.tagFilters.length) {
+      list = list.filter((s) =>
+        Array.isArray(s.tags) && uiPrefs.tagFilters.every((tag) => s.tags.includes(tag))
+      );
+    }
+    // visited filter
+    if (uiPrefs.filterVisited === "visited") list = list.filter((s) => s.__status === "visited");
+    if (uiPrefs.filterVisited === "notVisited") list = list.filter((s) => s.__status !== "visited");
+    return list;
+  }, [decorated, uiPrefs.search, uiPrefs.tagFilters, uiPrefs.filterVisited]);
+
+  // sorting
+  const sorted = useMemo(() => {
+    const list = [...filtered];
+    const { sortKey, sortDir } = uiPrefs;
+    const dir = sortDir === "desc" ? -1 : 1;
+    list.sort((a, b) => {
+      const av = (a?.[sortKey] ?? "").toString().toLowerCase();
+      const bv = (b?.[sortKey] ?? "").toString().toLowerCase();
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+    return list;
+  }, [filtered, uiPrefs.sortKey, uiPrefs.sortDir]);
+
+  // collected tags for quick chips
+  const allTags = useMemo(() => {
+    const bag = new Set();
+    for (const s of allStores) (s.tags || []).forEach((t) => bag.add(t));
+    return Array.from(bag).sort();
+  }, [allStores]);
+
+  return (
+    <div className="max-w-5xl mx-auto p-4 pb-24">
+      <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
+        <div className="flex-1">
+          <label className="text-sm text-gray-400">検索</label>
+          <input
+            className="w-full p-2 rounded text-black"
+            placeholder="店舗名 / グループ / タグ"
+            value={uiPrefs.search}
+            onChange={(e) => setUiPrefs({ ...uiPrefs, search: e.target.value })}
+          />
+        </div>
+        <div className="flex gap-2 items-end">
+          <div>
+            <label className="text-sm text-gray-400 block">ソート</label>
+            <select
+              className="p-2 rounded text-black"
+              value={uiPrefs.sortKey}
+              onChange={(e) => setUiPrefs({ ...uiPrefs, sortKey: e.target.value })}
+            >
+              <option value="name">店名</option>
+              <option value="group">グループ</option>
+              <option value="initialPriceText">初回表記</option>
+            </select>
+          </div>
+          <button
+            className="p-2 rounded bg-gray-700"
+            onClick={() => setUiPrefs({ ...uiPrefs, sortDir: uiPrefs.sortDir === "asc" ? "desc" : "asc" })}
+            title="昇順/降順切り替え"
+          >
+            {uiPrefs.sortDir === "asc" ? "昇順" : "降順"}
+          </button>
+          <div>
+            <label className="text-sm text-gray-400 block">訪問フィルタ</label>
+            <select
+              className="p-2 rounded text-black"
+              value={uiPrefs.filterVisited}
+              onChange={(e) => setUiPrefs({ ...uiPrefs, filterVisited: e.target.value })}
+            >
+              <option value="all">すべて</option>
+              <option value="visited">行ったことある</option>
+              <option value="notVisited">未訪問</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick tag chips */}
+      {allTags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {allTags.map((tag) => {
+            const active = uiPrefs.tagFilters.includes(tag);
+            return (
+              <button
+                key={tag}
+                className={cx(
+                  "px-2 py-1 rounded text-sm",
+                  active ? "bg-pink-600" : "bg-gray-700 hover:bg-gray-600"
                 )}
-
-                <div><label className="text-sm text-gray-400">バック料金</label><input type="text" name="backCharge" value={formData.backCharge} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">タグ (カンマ区切り)</label><input type="text" name="tags" value={formData.tags} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div>
-                    <label className="text-sm text-gray-400">人数</label>
-                    <select name="numberOfPeople" value={formData.numberOfPeople} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1">
-                        {numberOfPeopleOptions.map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-sm text-gray-400">属性</label>
-                    <div className="flex gap-2 mt-1">
-                        <button onClick={() => handleAttributeChange('locationType', 'walk')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'walk' ? 'bg-pink-500' : 'bg-gray-700'}`}>🚶</button>
-                        <button onClick={() => handleAttributeChange('locationType', 'house')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'house' ? 'bg-pink-500' : 'bg-gray-700'}`}>🏠</button>
-                    </div>
-                    <div className="flex gap-2 mt-1">
-                        <button onClick={() => handleAttributeChange('contactType', 'phone')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'phone' ? 'bg-pink-500' : 'bg-gray-700'}`}>📱</button>
-                        <button onClick={() => handleAttributeChange('contactType', 'none')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'none' ? 'bg-pink-500' : 'bg-gray-700'}`}>❌</button>
-                    </div>
-                </div>
-                <div>
-                    <label className="text-sm text-gray-400">必須身分証</label>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                        {idTypes.map(id => (
-                            <label key={id} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md">
-                                <input type="checkbox" checked={formData.requiredIds.includes(id)} onChange={() => handleIdChange(id)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
-                                <span>{id}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-                <div><label className="text-sm text-gray-400">ホスホスURL</label><input type="url" name="hosuhosuUrl" value={formData.hosuhosuUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">地図URL</label><input type="url" name="mapUrl" value={formData.mapUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">スタッフ専用メモ</label><textarea name="staffMemo" value={formData.staffMemo} onChange={handleChange} className="w-full h-24 p-2 bg-gray-800 rounded-md mt-1"></textarea></div>
-                <button onClick={handleSave} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">保存する</button>
-            </div>
+                onClick={() => {
+                  const next = active
+                    ? uiPrefs.tagFilters.filter((t) => t !== tag)
+                    : [...uiPrefs.tagFilters, tag];
+                  setUiPrefs({ ...uiPrefs, tagFilters: next });
+                }}
+                title={active ? "タグを外す" : "タグで絞り込む"}
+              >
+                {tag} <span className="opacity-70 ml-1">{active ? "×" : "+"}</span>
+              </button>
+            );
+          })}
+          {uiPrefs.tagFilters.length > 0 && (
+            <button
+              className="ml-1 px-2 py-1 rounded text-sm bg-gray-700 hover:bg-gray-600"
+              onClick={() => setUiPrefs({ ...uiPrefs, tagFilters: [] })}
+              title="すべてのタグ条件をクリア"
+            >
+              すべて解除 ×
+            </button>
+          )}
         </div>
-    );
-}
+      )}
 
-
-// --- Lower Navigation Bar & Modals ---
-function BottomNavBar({ currentFilter, setFilter, onLogout }) {
-    return (
-        <nav className="fixed bottom-0 left-0 right-0 bg-gray-800 max-w-lg mx-auto h-20 flex items-center justify-around px-4">
-            <button onClick={() => setFilter('visited')} className={`flex flex-col items-center justify-center w-24 h-full ${currentFilter === 'visited' ? 'text-pink-400' : 'text-gray-400'}`}><CheckSquare className="w-7 h-7 mb-1" /><span className="text-xs">行った店</span></button>
-            <button onClick={() => setFilter('all')} className={`flex items-center justify-center w-20 h-20 -mt-8 rounded-full shadow-lg transition-transform transform hover:scale-110 ${currentFilter === 'all' ? 'bg-pink-600' : 'bg-gray-700'}`}><Home className="w-9 h-9 text-white" /></button>
-            <button onClick={onLogout} className="flex flex-col items-center justify-center w-24 h-full text-gray-400"><LogOut className="w-7 h-7 mb-1" /><span className="text-xs">ログアウト</span></button>
-        </nav>
-    );
-}
-
-function StatusUpdateModal({ onClose, onUpdate }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">ステータスを選択</h3></div>
-                <div className="flex flex-col p-2">
-                    <button onClick={() => onUpdate('visited')} className="w-full text-left p-3 text-lg text-green-400 hover:bg-gray-700 rounded-md">✅ 行ったことある</button>
-                    <button onClick={() => onUpdate('unwanted')} className="w-full text-left p-3 text-lg text-red-400 hover:bg-gray-700 rounded-md">🚫 行きたくない</button>
-                    <button onClick={onClose} className="w-full text-left p-3 text-lg text-gray-400 hover:bg-gray-700 rounded-md">❌ キャンセル</button>
+      {/* List */}
+      <div className="mt-4 grid md:grid-cols-2 gap-3">
+        {loading && <div className="text-gray-400">読み込み中...</div>}
+        {!loading && sorted.length === 0 && (
+          <div className="text-gray-400">該当する店舗がありません。</div>
+        )}
+        {sorted.map((store) => {
+          const visited = store.__status === "visited";
+          const isClosedToday = (store?.closingDay || "").includes(dayNames[new Date().getDay()]);
+          return (
+            <div key={store.id} className="bg-gray-800 rounded-2xl p-4 shadow">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-bold text-lg">{store.name}</div>
+                  <div className="text-xs text-gray-400">{store.group}</div>
                 </div>
+                {/* visited toggle — this fixes the \"行ったことある\"追加不具合 */}
+                <button
+                  className={cx(
+                    "px-3 py-1 rounded text-sm",
+                    visited ? "bg-green-700" : "bg-gray-700 hover:bg-gray-600"
+                  )}
+                  onClick={() => onToggleVisited(store.id, !visited)}
+                  title={visited ? "未訪問に戻す" : "行ったことあるに追加"}
+                >
+                  {visited ? "行ったことある✓" : "行ったことあるに追加"}
+                </button>
+              </div>
+
+              <div className="mt-2 text-sm">
+                <div>営業時間など: {store.openingTime || "-"}</div>
+                <div>
+                  定休日: {store.closingDay || "-"}
+                  {isClosedToday && <span className="ml-2 text-yellow-300">(本日休み)</span>}
+                </div>
+                <div>初回: {store.initialPriceText || "-"}</div>
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-1">
+                {(store.tags || []).map((t) => (
+                  <span key={t} className="text-xs bg-gray-700 px-2 py-1 rounded">
+                    {t}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <button
+                  className="px-3 py-1 rounded bg-blue-700 hover:bg-blue-600 text-sm"
+                  onClick={() => onOpenDetail(store.id)}
+                >
+                  詳細を見る
+                </button>
+              </div>
             </div>
-        </div>
-    );
+          );
+        })}
+      </div>
+    </div>
+  );
 }
-function IdSelectionModal({ currentSelected, onClose, onApply }) {
-    const [selected, setSelected] = useState(currentSelected);
-    const toggleId = (id) => {
-        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+/*********************************
+ * Store Detail (accessible even if closed; back preserves list state)
+ *********************************/
+function StoreDetailScreen({ storeId, customerData, onBack, onMarkVisited }) {
+  const [store, setStore] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const visited = useMemo(() => {
+    return (customerData?.storeStatuses || []).some((s) => s.storeId === storeId && s.status === "visited");
+  }, [customerData?.storeStatuses, storeId]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const snap = await getDoc(doc(db, storeCollectionPath, storeId));
+        if (!active) return;
+        setStore(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+      } finally {
+        if (active) setLoading(false);
+      }
     };
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">身分証を選択</h3></div>
-                <div className="p-2 space-y-1">{idTypes.map(type => (<label key={type} className="flex items-center gap-3 p-3 hover:bg-gray-700 rounded-md cursor-pointer"><input type="checkbox" checked={selected.includes(type)} onChange={() => toggleId(type)} className="form-checkbox h-5 w-5 bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/><span>{type}</span></label>))}</div>
-                <div className="p-2"><button onClick={() => { onApply(selected); onClose(); }} className="w-full bg-pink-600 text-white font-bold py-2 rounded-lg">適用</button></div>
-            </div>
-        </div>
-    );
-}
-function AdminLoginModal({ onClose, onLoginSuccess }) {
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const handleLogin = () => {
-        if (password === '1234') { onLoginSuccess(); } 
-        else { setError('パスワードが違います'); setPassword(''); }
+    load();
+    return () => {
+      active = false;
     };
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-6" onClick={(e) => e.stopPropagation()}>
-                <h3 className="font-bold text-lg text-center mb-4">管理者パスワード</h3>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" maxLength="4" className="w-full text-center tracking-widest px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
-                {error && <p className="text-red-500 text-sm text-center mt-2">{error}</p>}
-                <button onClick={handleLogin} className="w-full mt-4 bg-pink-600 text-white font-bold py-2 rounded-lg">ログイン</button>
-            </div>
-        </div>
-    );
-}
-function GroupSelectionModal({ groups, onClose, onSelect }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">グループを選択</h3></div>
-                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
-                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべてのグループ</button>
-                    {groups.map(group => (<button key={group} onClick={() => onSelect(group)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{group}</button>))}
-                </div>
-            </div>
-        </div>
-    );
-}
-function PriceSelectionModal({ onClose, onSelect }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">料金を選択</h3></div>
-                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
-                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての料金</button>
-                    {priceFilterRanges.map(range => (<button key={range.label} onClick={() => onSelect(range)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{range.label}</button>))}
-                </div>
-            </div>
-        </div>
-    );
-}
+  }, [storeId]);
 
-function NumberOfPeopleSelectionModal({ onClose, onSelect }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">人数を選択</h3></div>
-                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
-                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての人数</button>
-                    {numberOfPeopleOptions.map(option => (<button key={option.label} onClick={() => onSelect(option)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{option.label}</button>))}
-                </div>
-            </div>
-        </div>
-    );
-}
+  return (
+    <div className="max-w-3xl mx-auto p-4">
+      <button className="text-blue-300 hover:text-blue-200" onClick={onBack}>
+        ← 一覧に戻る
+      </button>
 
-// 新しく追加した確認モーダルコンポーネント
-function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-6" onClick={(e) => e.stopPropagation()}>
-                <h3 className="font-bold text-lg text-center mb-2">{title}</h3>
-                <p className="text-gray-300 text-center mb-6">{message}</p>
-                <div className="flex gap-4">
-                    <button onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">キャンセル</button>
-                    <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">OK</button>
-                </div>
-            </div>
-        </div>
-    );
-}
+      {loading && <div className="mt-4 text-gray-400">読み込み中...</div>}
+      {!loading && !store && <div className="mt-4 text-red-300">店舗が見つかりません。</div>}
 
-export default App;
+      {store && (
+        <div className="mt-4 bg-gray-800 rounded-2xl p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold">{store.name}</h1>
+              <div className="text-sm text-gray-400">{store.group}</div>
+            </div>
+            <button
+              className={cx(
+                "px-3 py-1 rounded text-sm",
+                visited ? "bg-green-700" : "bg-gray-700 hover:bg-gray-600"
+              )}
+              onClick={() => onMarkVisited(store.id)}
+            >
+              {visited ? "行ったことある✓" : "行ったことあるに追加"}
+            </button>
+          </div>
+
+          <div className="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-gray-400">営業時間など</div>
+              <div>{store.openingTime || "-"}</div>
+            </div>
+            <div>
+              <div className="text-gray-400">定休日</div>
+              <div>{store.closingDay || "-"} <span className="text-xs text-gray-400">(休業日でも詳細は閲覧可能)</span></div>
+            </div>
+            <div>
+              <div className="text-gray-400">初回</div>
+              <div>{store.initialPriceText || "-"}</div>
+            </div>
+            <div>
+              <div className="text-gray-400">タグ</div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {(store.tags || []).map((t) => (
+                  <span key={t} className="px-2 py-1 rounded bg-gray-700 text-xs">{t}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {store.description && (
+            <div className="mt-4 whitespace-pre-wrap text-sm leading-6">{store.description}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
