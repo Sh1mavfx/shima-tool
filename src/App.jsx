@@ -591,6 +591,8 @@ function AdminCustomerDetailScreen({ customerInfo, navigateTo }) {
             const shareUrl = `${window.location.href.split('?')[0]}?shareId=${docRef.id}`;
             const textArea = document.createElement("textarea");
             textArea.value = shareUrl;
+            textArea.style.position = "fixed"; 
+            textArea.style.left = "-9999px";
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand('copy');
