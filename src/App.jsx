@@ -32,7 +32,7 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const db = getFirestore(app);
 const auth = getAuth(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const appId = (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id').replace(/\//g, '_');
 const storeCollectionPath = `artifacts/${appId}/public/data/stores`;
 const sharedListsCollectionPath = `artifacts/${appId}/public/data/sharedLists`;
 
@@ -108,7 +108,8 @@ function App() {
 
     const getCustomerCollectionPath = () => {
         if (!currentUser) return null;
-        return `artifacts/${appId}/staffs/${currentUser.uid}/customers`;
+        // CORRECTED PATH: Use /users/ instead of /staffs/ to align with platform security rules
+        return `artifacts/${appId}/users/${currentUser.uid}/customers`;
     };
 
     const loadCustomerData = async (id) => {
@@ -160,9 +161,9 @@ function App() {
             case 'login': return <LoginScreen setError={setError} error={error} />;
             case 'sharedList': return <SharedListScreen shareId={shareId} />;
             case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} isAdmin={isAdmin} navigateTo={navigateTo} />;
-            case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} navigateTo={navigateTo} listFilter={listFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} />;
-            case 'admin': return <AdminScreen navigateTo={navigateTo} />;
-            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} />;
+            case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} />;
+            case 'admin': return <AdminScreen navigateTo={navigateTo} isAdmin={isAdmin} />;
+            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} isAdmin={isAdmin} getCustomerCollectionPath={getCustomerCollectionPath} />;
             case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerInfo={selectedAdminCustomer} navigateTo={navigateTo} />;
             case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
             case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
@@ -227,14 +228,13 @@ function CustomerSelectionScreen({ onSelect, onCreate, onViewAsGuest, error, tod
             <button onClick={onViewAsGuest} className="w-full max-w-sm mt-4 border-2 border-pink-500 text-pink-500 font-bold py-3 px-4 rounded-lg">店舗一覧を見る (ゲスト)</button>
             {error && <p className="text-red-500 mt-4">{error}</p>}
             <div className="absolute bottom-6 right-6 flex items-center gap-4">
-                {isAdmin && <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-gray-400 hover:text-pink-400"><Shield className="w-5 h-5" />管理者</button>}
+                 <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-gray-400 hover:text-pink-400"><Shield className="w-5 h-5" />管理者</button>
                 <button onClick={handleLogout} className="flex items-center gap-2 text-gray-400 hover:text-pink-400"><LogOut className="w-5 h-5" />ログアウト</button>
             </div>
         </div>
     );
 }
-function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo, listFilter, today, getCustomerCollectionPath }) {
-    const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, storeId: null });
+function StoreListScreen({ customerData, setCustomerData, customerId, listFilter, setListFilter, today, getCustomerCollectionPath }) {
     const [idFilterModalOpen, setIdFilterModalOpen] = useState(false);
     const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
     const [priceFilterModalOpen, setPriceFilterModalOpen] = useState(false);
@@ -248,8 +248,8 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     const [allStores, setAllStores] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStore, setSelectedStore] = useState(null);
-    const [stoppedStores, setStoppedStores] = useState([]);
     const [storeToStop, setStoreToStop] = useState(null);
+    const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, storeId: null });
 
     useEffect(() => {
         const fetchStores = async () => {
@@ -267,7 +267,6 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         const newStoreStatuses = customerData.storeStatuses.map(s => s.storeId === storeId ? { ...s, status: newStatus } : s);
         const updatedCustomerData = { ...customerData, storeStatuses: newStoreStatuses };
         setCustomerData(updatedCustomerData);
-        setStatusUpdateModal({ isOpen: false, storeId: null });
         try {
             const customerRef = doc(db, customerPath, customerId);
             await updateDoc(customerRef, { storeStatuses: newStoreStatuses });
@@ -276,11 +275,11 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
 
     const handleToggleStopStore = async (storeId) => {
         const todayStr = new Date().toISOString().slice(0, 10);
-        let newStoppedStores;
-
+        
         if (customerId) {
             const customerPath = getCustomerCollectionPath();
             const currentStopped = customerData.stoppedStores?.filter(s => s.date === todayStr) || [];
+            let newStoppedStores;
             if (currentStopped.some(s => s.storeId === storeId)) {
                 newStoppedStores = currentStopped.filter(s => s.storeId !== storeId);
             } else {
@@ -292,12 +291,6 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                 const customerRef = doc(db, customerPath, customerId);
                 await updateDoc(customerRef, { stoppedStores: newStoppedStores });
             } catch (e) { console.error("Error stopping store: ", e); }
-        } else {
-            if (stoppedStores.includes(storeId)) {
-                setStoppedStores(prev => prev.filter(id => id !== storeId));
-            } else {
-                setStoppedStores(prev => [...prev, storeId]);
-            }
         }
         setStoreToStop(null);
     };
@@ -314,7 +307,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     const filteredStores = useMemo(() => {
         let stores = [...combinedStores];
         const todayStr = new Date().toISOString().slice(0, 10);
-        const stoppedToday = customerId ? customerData?.stoppedStores?.filter(s => s.date === todayStr).map(s => s.storeId) || [] : stoppedStores;
+        const stoppedToday = customerId ? customerData?.stoppedStores?.filter(s => s.date === todayStr).map(s => s.storeId) || [] : [];
 
         stores = stores.filter(s => !stoppedToday.includes(s.id));
 
@@ -349,7 +342,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         });
 
         return [...activeStores, ...unwantedStores, ...closedStores];
-    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople, locationTypeFilter, lateNightFilter, customerData, today, stoppedStores, customerId]);
+    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople, locationTypeFilter, lateNightFilter, customerData, today, customerId]);
     
     const resetFilters = () => {
         setLocationTypeFilter(null);
@@ -365,17 +358,9 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
         <div className="pb-28">
             <header className="p-4 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-10">
                 <h1 className="text-2xl font-bold text-center mb-4">{listFilter === 'visited' ? '行ったことある店' : `${customerData?.nickname || '店舗'}リスト`}</h1>
-                
                 <div className="mb-4">
-                    <input
-                        type="text"
-                        placeholder="店名、グループ、タグ、読み仮名で検索..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-full text-white placeholder-gray-500"
-                    />
+                    <input type="text" placeholder="店名、グループ、タグ、読み仮名で検索..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-full text-white placeholder-gray-500"/>
                 </div>
-
                 <div className="flex space-x-2 overflow-x-auto pb-2 -mx-4 px-4">
                     <button onClick={resetFilters} className="whitespace-nowrap px-4 py-2 text-sm font-semibold bg-gray-600 rounded-full hover:bg-gray-700">リセット</button>
                     <button onClick={() => setGroupFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full ${selectedGroup ? 'bg-pink-500' : 'bg-gray-800 hover:bg-pink-500'}`}>グループ</button>
@@ -401,7 +386,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                         { customerId &&
                             <div className="flex items-center">
                                 <button onClick={() => setStoreToStop(store)} className="mr-2 bg-yellow-600 text-white rounded-full p-2 hover:bg-yellow-700"><Ban className="w-5 h-5" /></button>
-                                <button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500"><X className="w-5 h-5" /></button>
+                                <button onClick={() => { setStatusUpdateModal({ isOpen: true, storeId: store.id }) }} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500"><X className="w-5 h-5" /></button>
                             </div>
                         }
                          {store.closingDay === today && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg pointer-events-none"><span className="text-white text-xl font-bold transform -rotate-12">定休日</span></div>)}
@@ -409,7 +394,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
                 ))}
             </main>
             {selectedStore && <StoreDetailScreen store={selectedStore} onClose={() => setSelectedStore(null)} />}
-            {statusUpdateModal.isOpen && <StatusUpdateModal onClose={() => setStatusUpdateModal({ isOpen: false, storeId: null })} onUpdate={(newStatus) => updateStoreStatus(statusUpdateModal.storeId, newStatus)} />}
+            {statusUpdateModal.isOpen && <StatusUpdateModal onClose={() => setStatusUpdateModal({ isOpen: false, storeId: null })} onUpdate={(newStatus) => {updateStoreStatus(statusUpdateModal.storeId, newStatus); setStatusUpdateModal({isOpen: false, storeId: null})}} />}
             {idFilterModalOpen && <IdSelectionModal currentSelected={selectedIds} onClose={() => setIdFilterModalOpen(false)} onApply={setSelectedIds} />}
             {groupFilterModalOpen && <GroupSelectionModal groups={allGroups} onClose={() => setGroupFilterModalOpen(false)} onSelect={(group) => { setSelectedGroup(group); setGroupFilterModalOpen(false); }} />}
             {priceFilterModalOpen && <PriceSelectionModal onClose={() => setPriceFilterModalOpen(false)} onSelect={(range) => { setSelectedPriceRange(range); setPriceFilterModalOpen(false); }} />}
@@ -447,7 +432,7 @@ function StoreDetailScreen({ store, onClose }) {
     );
 }
 
-function AdminScreen({ navigateTo }) {
+function AdminScreen({ navigateTo, isAdmin }) {
     return (
         <div className="p-4">
             <button onClick={() => navigateTo('customerSelection')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />トップに戻る</button>
@@ -461,39 +446,50 @@ function AdminScreen({ navigateTo }) {
                     <h2 className="text-lg font-bold">顧客管理</h2>
                     <p className="text-sm text-gray-400">顧客のメモや利用状況を確認します</p>
                 </button>
-                <button onClick={() => navigateTo('adminStaffManagement')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
-                    <h2 className="text-lg font-bold">スタッフ管理</h2>
-                    <p className="text-sm text-gray-400">新規スタッフの登録を行います</p>
-                </button>
+                {isAdmin && (
+                    <button onClick={() => navigateTo('adminStaffManagement')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
+                        <h2 className="text-lg font-bold">外販スタッフユーザー管理</h2>
+                        <p className="text-sm text-gray-400">新規スタッフの登録を行います</p>
+                    </button>
+                )}
             </div>
         </div>
     );
 }
 
-function AdminCustomersScreen({ navigateTo }) {
+function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }) {
     const [customers, setCustomers] = useState([]);
     const [toast, setToast] = useState('');
     const [customerToDelete, setCustomerToDelete] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchCustomers = async () => {
-        setLoading(true);
-        try {
-            const customersQuery = query(collectionGroup(db, 'customers'));
-            const querySnapshot = await getDocs(customersQuery);
-            const customersList = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                path: doc.ref.path
-            }));
-            setCustomers(customersList);
-        } catch (error) { console.error("Error fetching customers: ", error); }
-        setLoading(false);
-    };
-
     useEffect(() => {
+        const fetchCustomers = async () => {
+            setLoading(true);
+            try {
+                let customersQuery;
+                if(isAdmin){
+                    customersQuery = query(collectionGroup(db, 'customers'));
+                } else {
+                    const customerPath = getCustomerCollectionPath();
+                    if(customerPath) {
+                        customersQuery = query(collection(db, customerPath));
+                    }
+                }
+                if(customersQuery){
+                    const querySnapshot = await getDocs(customersQuery);
+                    const customersList = querySnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        path: doc.ref.path
+                    }));
+                    setCustomers(customersList);
+                }
+            } catch (error) { console.error("Error fetching customers: ", error); }
+            setLoading(false);
+        };
         fetchCustomers();
-    }, []);
+    }, [isAdmin, getCustomerCollectionPath]);
 
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text).then(() => {
@@ -507,8 +503,8 @@ function AdminCustomersScreen({ navigateTo }) {
         try {
             await deleteDoc(doc(db, customerToDelete.path));
             setToast(`顧客「${customerToDelete.nickname}」を削除しました。`);
+            setCustomers(prev => prev.filter(c => c.path !== customerToDelete.path));
             setCustomerToDelete(null);
-            fetchCustomers();
         } catch (error) {
             console.error("Error deleting customer: ", error);
             setToast('顧客の削除に失敗しました。');
@@ -835,6 +831,41 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
         </div>
     );
 }
+function AdminStoresScreen({ navigateTo }) {
+    const [stores, setStores] = useState([]);
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+	const fetchStores = async () => {
+	  const querySnapshot = await getDocs(collection(db, storeCollectionPath));
+	  const fetchedStores = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+	  fetchedStores.sort((a, b) => a.name.localeCompare(b.name));
+	  setStores(fetchedStores);
+	  setLoading(false);
+	};
+	fetchStores();
+    }, []);
+
+    if (loading) return <div className="p-4 text-center">店舗情報を読み込み中...</div>;
+
+    return (
+        <div className="p-4">
+            <div className="flex justify-between items-center mb-6">
+                <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-pink-400"><ArrowLeft />管理メニュー</button>
+                <h1 className="text-2xl font-bold">店舗管理</h1>
+                <div className="w-16"></div>
+            </div>
+            <button onClick={() => navigateTo('adminStoreEdit', null)} className="w-full mb-4 flex items-center justify-center gap-2 p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700"><PlusCircle/>新規店舗を追加</button>
+            <div className="space-y-3">
+                {stores.map(store => (
+                    <div key={store.id} className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                        <div><p className="font-bold">{store.name}</p><p className="text-xs text-gray-400">{store.group}</p></div>
+                        <button onClick={() => navigateTo('adminStoreEdit', store)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Edit className="w-5 h-5" /></button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 function AdminStoreEditScreen({ store, navigateTo }) {
     const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialTime: '', closingDay: '', lateNightOption: '不可', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
     const [hasPriceRange, setHasPriceRange] = useState(false);
@@ -981,6 +1012,58 @@ function AdminStoreEditScreen({ store, navigateTo }) {
                 <div><label className="text-sm text-gray-400">地図URL</label><input type="url" name="mapUrl" value={formData.mapUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
                 <div><label className="text-sm text-gray-400">スタッフ専用メモ</label><textarea name="staffMemo" value={formData.staffMemo} onChange={handleChange} className="w-full h-24 p-2 bg-gray-800 rounded-md mt-1"></textarea></div>
                 <button onClick={handleSave} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">保存する</button>
+            </div>
+        </div>
+    );
+}
+function SharedListScreen({ shareId }) {
+    const [sharedData, setSharedData] = useState(null);
+    const [stores, setStores] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSharedData = async () => {
+            try {
+                const docRef = doc(db, sharedListsCollectionPath, shareId);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setSharedData(data);
+                    
+                    if (data.visitedStoreIds && data.visitedStoreIds.length > 0) {
+                        const storesData = [];
+                        // Use a single query with 'in' operator for efficiency
+                        const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', data.visitedStoreIds));
+                        const querySnapshot = await getDocs(storesQuery);
+                        querySnapshot.forEach((doc) => {
+                            storesData.push({ id: doc.id, ...doc.data() });
+                        });
+                        setStores(storesData);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching shared list:", error);
+            }
+            setLoading(false);
+        };
+        fetchSharedData();
+    }, [shareId]);
+
+    if (loading) return <div className="text-center p-10">読み込み中...</div>;
+    if (!sharedData) return <div className="text-center p-10">共有リストが見つかりません。</div>;
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold text-center mb-6">{sharedData.nickname}さんの行ったお店リスト</h1>
+            <div className="space-y-3">
+                {stores.map(store => (
+                    <div key={store.id} className="bg-gray-800 rounded-lg p-4">
+                        <h2 className="text-lg font-bold">{store.name}</h2>
+                        <p className="text-sm text-gray-400">{store.group}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
+                    </div>
+                ))}
             </div>
         </div>
     );
