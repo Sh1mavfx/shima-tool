@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getApps, initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc, collectionGroup, where } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc, collectionGroup, where, onSnapshot } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // --- ▼▼▼ 管理者のUIDをここに追加 ▼▼▼ ---
@@ -436,51 +436,51 @@ function AdminScreen({ navigateTo, isAdmin }) {
     );
 }
 
-function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath }) {
+function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath, setShareModalData }) {
     const [customers, setCustomers] = useState([]);
     const [toast, setToast] = useState('');
     const [customerToDelete, setCustomerToDelete] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const fetchCustomers = async () => {
+        setLoading(true);
+        try {
+            const customerPath = getCustomerCollectionPath();
+            if(customerPath) {
+                const customersQuery = query(collection(db, customerPath));
+                const querySnapshot = await getDocs(customersQuery);
+                const customersList = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    path: doc.ref.path
+                }));
+                setCustomers(customersList);
+            }
+        } catch (error) { console.error("Error fetching customers: ", error); }
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const fetchCustomers = async () => {
-            setLoading(true);
-            try {
-                const customerPath = getCustomerCollectionPath();
-                if(customerPath) {
-                    const customersQuery = query(collection(db, customerPath));
-                    const querySnapshot = await getDocs(customersQuery);
-                    const customersList = querySnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data(),
-                        path: doc.ref.path
-                    }));
-                    setCustomers(customersList);
-                }
-            } catch (error) { console.error("Error fetching customers: ", error); }
-            setLoading(false);
-        };
         fetchCustomers();
     }, [getCustomerCollectionPath]);
 
-    const copyToClipboard = (text) => {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed"; 
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        try { 
-            document.execCommand('copy'); 
-            setToast('IDをコピーしました！');
-            setTimeout(() => setToast(''), 2000); 
-        } catch (err) { 
-            console.error('Failed to copy: ', err); 
-            setToast('コピーに失敗しました。');
-            setTimeout(() => setToast(''), 2000); 
+    const handleCreateShareLink = async (customer) => {
+        if (!customer) return;
+        try {
+            const docRef = await addDoc(collection(db, sharedListsCollectionPath), {
+                customerPath: customer.path,
+                nickname: customer.nickname,
+            });
+            const baseUrl = window.location.href.split('?')[0];
+            const shareUrl = `${baseUrl}?shareId=${docRef.id}`;
+            setShareModalData({ isOpen: true, url: shareUrl });
+
+        } catch (error) {
+            console.error("Error creating share link: ", error);
+            setToast('共有リンクの作成に失敗しました。');
         }
-        document.body.removeChild(textArea);
     };
+
 
     const handleDeleteCustomer = async () => {
         if (!customerToDelete) return;
@@ -495,7 +495,7 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath }) {
         }
     };
 
-    if (loading) return <div className="text-center p-10">顧客情報を読み込み中...</div>;
+    if (loading) return <div className="text-center p-10">顧客情報を読み込み中...</div>
 
     return (
         <div className="p-4">
@@ -513,7 +513,7 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath }) {
                             <p className="text-xs text-gray-400 truncate">ID: {customer.id}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => copyToClipboard(customer.id)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Clipboard className="w-5 h-5" /></button>
+                            <button onClick={() => handleCreateShareLink(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-blue-500"><Share2 className="w-5 h-5" /></button>
                             <button onClick={() => setCustomerToDelete(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-red-500"><Trash2 className="w-5 h-5" /></button>
                         </div>
                     </div>
@@ -587,13 +587,12 @@ function AdminCustomerDetailScreen({ customerInfo, navigateTo, setShareModalData
         }
         try {
             const docRef = await addDoc(collection(db, sharedListsCollectionPath), {
+                customerPath: customerInfo.path,
                 nickname: customer.nickname,
-                visitedStoreIds: visitedStoreIds,
             });
             const baseUrl = window.location.href.split('?')[0];
             const shareUrl = `${baseUrl}?shareId=${docRef.id}`;
             setShareModalData({ isOpen: true, url: shareUrl });
-
         } catch (error) {
             console.error("Error creating share link: ", error);
             setToast('共有リンクの作成に失敗しました。');
@@ -942,49 +941,60 @@ function SharedListScreen({ shareId }) {
     const [sharedData, setSharedData] = useState(null);
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [customerName, setCustomerName] = useState('');
 
     useEffect(() => {
-        const fetchSharedData = async () => {
-            try {
-                const docRef = doc(db, sharedListsCollectionPath, shareId);
-                const docSnap = await getDoc(docRef);
+        if (!shareId) return;
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setSharedData(data);
-                    
-                    if (data.visitedStoreIds && data.visitedStoreIds.length > 0) {
-                        const storesData = [];
-                        const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', data.visitedStoreIds));
-                        const querySnapshot = await getDocs(storesQuery);
-                        querySnapshot.forEach((doc) => {
-                            storesData.push({ id: doc.id, ...doc.data() });
-                        });
-                        setStores(storesData);
+        const shareDocRef = doc(db, sharedListsCollectionPath, shareId);
+        
+        const unsubscribe = onSnapshot(shareDocRef, async (shareSnap) => {
+            if (shareSnap.exists()) {
+                const shareData = shareSnap.data();
+                setCustomerName(shareData.nickname);
+
+                const customerDocRef = doc(db, shareData.customerPath);
+                onSnapshot(customerDocRef, async (customerSnap) => {
+                    if (customerSnap.exists()) {
+                         const customerData = customerSnap.data();
+                         const visitedStoreIds = customerData.storeStatuses
+                            .filter(s => s.status === 'visited')
+                            .map(s => s.storeId);
+                        
+                        if (visitedStoreIds.length > 0) {
+                            const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', visitedStoreIds));
+                            const querySnapshot = await getDocs(storesQuery);
+                            const storesData = querySnapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                            setStores(storesData);
+                        } else {
+                            setStores([]);
+                        }
                     }
-                }
-            } catch (error) {
-                console.error("Error fetching shared list:", error);
+                     setLoading(false);
+                });
+            } else {
+                setLoading(false);
             }
-            setLoading(false);
-        };
-        fetchSharedData();
+        });
+
+        return () => unsubscribe();
+
     }, [shareId]);
 
     if (loading) return <div className="text-center p-10">読み込み中...</div>;
-    if (!sharedData) return <div className="text-center p-10">共有リストが見つかりません。</div>;
+    if (!customerName) return <div className="text-center p-10">共有リストが見つかりません。</div>;
 
     return (
         <div className="p-4">
-            <h1 className="text-2xl font-bold text-center mb-6">{sharedData.nickname}さんの行ったお店リスト</h1>
+            <h1 className="text-2xl font-bold text-center mb-6">{customerName}さんの行ったお店リスト</h1>
             <div className="space-y-3">
-                {stores.map(store => (
+                 {stores.length > 0 ? stores.map(store => (
                     <div key={store.id} className="bg-gray-800 rounded-lg p-4">
                         <h2 className="text-lg font-bold">{store.name}</h2>
                         <p className="text-sm text-gray-400">{store.group}</p>
                         <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                     </div>
-                ))}
+                )) : <p className="text-center text-gray-400">まだ行ったお店はありません。</p>}
             </div>
         </div>
     );
