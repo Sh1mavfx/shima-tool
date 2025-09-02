@@ -167,7 +167,7 @@ function App() {
             case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} navigateTo={navigateTo} />;
             case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} navigateTo={navigateTo} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} isAdmin={isAdmin} />;
-            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} isAdmin={isAdmin} getCustomerCollectionPath={getCustomerCollectionPath} />;
+            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} getCustomerCollectionPath={getCustomerCollectionPath} />;
             case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerInfo={selectedAdminCustomer} navigateTo={navigateTo} />;
             case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
             case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
@@ -417,7 +417,7 @@ function StoreDetailScreen({ store, onClose }) {
     const [modalMessage, setModalMessage] = useState('');
 
     const handlePasswordCheck = () => {
-        if (password === 'White1221') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
+        if (password === '1234') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
         else { setModalMessage('パスワードが違います'); }
     };
 
@@ -472,16 +472,9 @@ function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }
         const fetchCustomers = async () => {
             setLoading(true);
             try {
-                let customersQuery;
-                if(isAdmin){
-                    customersQuery = query(collectionGroup(db, 'customers'));
-                } else {
-                    const customerPath = getCustomerCollectionPath();
-                    if(customerPath) {
-                        customersQuery = query(collection(db, customerPath));
-                    }
-                }
-                if(customersQuery){
+                const customerPath = getCustomerCollectionPath();
+                if(customerPath) {
+                    const customersQuery = query(collection(db, customerPath));
                     const querySnapshot = await getDocs(customersQuery);
                     const customersList = querySnapshot.docs.map(doc => ({
                         id: doc.id,
@@ -494,7 +487,7 @@ function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }
             setLoading(false);
         };
         fetchCustomers();
-    }, [isAdmin, getCustomerCollectionPath]);
+    }, [getCustomerCollectionPath]);
 
     const copyToClipboard = (text) => {
         const textArea = document.createElement("textarea");
