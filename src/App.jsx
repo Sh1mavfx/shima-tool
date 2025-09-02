@@ -168,7 +168,7 @@ function App() {
             case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} navigateTo={navigateTo} />;
             case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} navigateTo={navigateTo} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} isAdmin={isAdmin} />;
-            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} isAdmin={isAdmin} getCustomerCollectionPath={getCustomerCollectionPath} />;
+            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} getCustomerCollectionPath={getCustomerCollectionPath} />;
             case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerInfo={selectedAdminCustomer} navigateTo={navigateTo} />;
             case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
             case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
@@ -493,7 +493,7 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath }) {
         }
     };
 
-    if (loading) return <div className="text-center p-10">顧客情報を読み込み中...</div>;
+    if (loading) return <div className="text-center p-10">顧客情報を読み込み中...</div>
 
     return (
         <div className="p-4">
