@@ -3,6 +3,11 @@ import { getApps, initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc, collectionGroup, where } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
+// --- ▼▼▼ 管理者のUIDをここに追加 ▼▼▼ ---
+// 例: const ADMIN_UIDS = ["zW9wAbcDEfgHIjklMnoPQRsTuvW2", "anotherAdminUid..."];
+const ADMIN_UIDS = ["1UkAgjz9Jshc8tEpVycPDww67I12"];
+// --- ▲▲▲ ここまで ▲▲▲ ---
+
 // --- Icon Components (No changes) ---
 const Home = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg> );
 const CheckSquare = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> );
@@ -83,8 +88,9 @@ function App() {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
             if (user) {
-                const tokenResult = await user.getIdTokenResult();
-                setIsAdmin(!!tokenResult.claims.admin);
+                // Simplified admin check using a hardcoded UID list
+                setIsAdmin(ADMIN_UIDS.includes(user.uid)); 
+                
                 if (!shareId) setPage('customerSelection');
 
                 try {
