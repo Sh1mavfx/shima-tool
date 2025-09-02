@@ -1,31 +1,29 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { getApps, initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  collection,
-  addDoc,
-  query,
-  getDocs,
-  writeBatch,
-  deleteDoc,
-  where,
-} from "firebase/firestore";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail,
-} from "firebase/auth";
+import React, { useState, useEffect, useMemo } from 'react';
+import { getApps, initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc, collectionGroup } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 
-/*********************************
- * Firebase Setup
- *********************************/
+
+// --- Icon Components (No Changes) ---
+const Home = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg> );
+const CheckSquare = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> );
+const LogOut = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> );
+const ArrowLeft = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> );
+const X = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> );
+const MapPin = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> );
+const LinkIcon = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg> );
+const Clipboard = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg> );
+const Shield = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> );
+const Edit = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> );
+const PlusCircle = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> );
+const Trash2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> );
+const User = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> );
+const Smartphone = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> );
+const Ban = (props) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>);
+const Share2 = (props) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>);
+
+
+// --- Firebase Setup ---
 const firebaseConfig = {
   apiKey: "AIzaSyBDXaOWBwJ2-go5e7wGV-ovD4S3Et-E2GY",
   authDomain: "shima-tool.firebaseapp.com",
@@ -33,819 +31,968 @@ const firebaseConfig = {
   storageBucket: "shima-tool.firebasestorage.app",
   messagingSenderId: "1047021803924",
   appId: "1:1047021803924:web:ed63eb1dff81707d8dd781",
-  measurementId: "G-9GE47W77ZR",
+  measurementId: "G-9GE47W77ZR"
 };
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const db = getFirestore(app);
 const auth = getAuth(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-const appId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
-const customerCollectionPath = `artifacts/${appId}/public/data/customers`;
+// --- Dynamic Collection Path Helpers ---
+const getCustomerCollectionPath = (staffId) => `artifacts/${appId}/staffs/${staffId}/customers`;
+const getCustomerDocPath = (staffId, customerId) => doc(db, getCustomerCollectionPath(staffId), customerId);
 const storeCollectionPath = `artifacts/${appId}/public/data/stores`;
-const staffCollectionPath = `artifacts/${appId}/public/data/staffs`; // STAFF 管理用
+const sharedListsCollectionPath = `sharedLists`;
 
-/*********************************
- * Utilities
- *********************************/
-const dayNames = [
-  "日曜日",
-  "月曜日",
-  "火曜日",
-  "水曜日",
-  "木曜日",
-  "金曜日",
-  "土曜日",
+
+// --- Constant Data (No Changes) ---
+const idTypes = ["運転免許証", "マイナンバー", "パスポート", "保険証", "キャッシュカード", "クレジットカード"];
+const priceFilterRanges = [
+    { label: "無料", min: 0, max: 0 }, { label: "~1000円", min: 1, max: 1000 },
+    { label: "~2000円", min: 1001, max: 2000 }, { label: "~3000円", min: 2001, max: 3000 },
+    { label: "~5000円", min: 3001, max: 5000 }, { label: "~10000円", min: 5001, max: 10000 }
 ];
-const todayName = () => dayNames[new Date().getDay()];
+const numberOfPeopleOptions = [
+    { label: "~1人", value: 1 }, { label: "~2人", value: 2 },
+    { label: "~3人", value: 3 }, { label: "~4人", value: 4 }
+];
+const lateNightOptions = [
+    { label: "不可", value: "不可" }, { label: "23:30~", value: "23:30~" }, { label: "23:45~", value: "23:45~" }
+];
+const initialStoresData = [
+    { id: 'store1', name: 'Club AIR', group: 'AIR GROUP', phoneticName: 'くらぶえあー', openingTime: '19:00', initialTime: 60, closingDay: '日曜日', lateNightOption: '23:30~', initialPriceText: '3000円', initialPriceMin: 3000, initialPriceMax: 3000, backCharge: 'T/C 3000円', requiredIds: ['運転免許証', 'パスポート'], tags: ['#イケメン揃い', '#初回安い'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '担当Aはシャンパンが好き。', numberOfPeople: 2, locationType: 'walk', contactType: 'phone' },
+    { id: 'store2', name: 'TOP DANDY', group: 'groupdandy', phoneticName: 'とっぷだんでぃ', openingTime: '20:00', initialTime: 90, closingDay: '月曜日', lateNightOption: '23:45~', initialPriceText: '5000円', initialPriceMin: 5000, initialPriceMax: 5000, backCharge: 'T/C 4000円', requiredIds: ['運転免許証', 'マイナンバー'], tags: ['#老舗', '#落ち着いた雰囲気'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: '新人Bはトークが上手い。', numberOfPeople: 4, locationType: 'house', contactType: 'phone' },
+    { id: 'store3', name: 'Lillion', group: 'Lillion', phoneticName: 'りりおん', openingTime: '18:00', initialTime: 120, closingDay: 'なし', lateNightOption: '不可', initialPriceText: '2000円※', initialPriceMin: 1000, initialPriceMax: 2000, backCharge: 'なし', requiredIds: ['運転免許証'], tags: ['#新規店', '#ワイワイ系'], hosuhosuUrl: '#', mapUrl: '#', staffMemo: 'リーダーCは週末混雑を避けたがる。', numberOfPeople: 3, locationType: 'walk', contactType: 'none' },
+];
 
-function cx(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
+// --- Main App Component ---
+function App() {
+    const [page, setPage] = useState('loading');
+    const [user, setUser] = useState(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [shareId, setShareId] = useState(null);
+    
+    const [selectedCustomer, setSelectedCustomer] = useState(null); // {id, data, staffId}
+    const [editingStore, setEditingStore] = useState(null); // {id, data}
+    const [listFilter, setListFilter] = useState('all');
 
-const MASTER_PASSWORD = "White1221"; // 指定されたマスターパスワード（クライアント側チェック）
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [today, setToday] = useState('');
 
-/*********************************
- * Root App
- *********************************/
-export default function App() {
-  const [page, setPage] = useState("staffLogin");
-  const [staffUser, setStaffUser] = useState(null);
-  const [staffMeta, setStaffMeta] = useState(null); // { email, isAdmin, allowed }
-  const [error, setError] = useState("");
-  const [weekday, setWeekday] = useState(todayName());
-
-  // customer/session state
-  const [customerId, setCustomerId] = useState(null);
-  const [customerData, setCustomerData] = useState(null);
-
-  useEffect(() => setWeekday(todayName()), []);
-
-  // Auth state watcher: validate that the signed-in user is registered in staffs collection and allowed
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setError("");
-      if (!u) {
-        setStaffUser(null);
-        setStaffMeta(null);
-        setPage("staffLogin");
-        return;
-      }
-      // fetch staff doc
-      try {
-        const staffRef = doc(db, staffCollectionPath, u.uid);
-        const staffSnap = await getDoc(staffRef);
-        if (!staffSnap.exists()) {
-          // Not in staff DB -> sign out and show message
-          await signOut(auth);
-          setStaffUser(null);
-          setStaffMeta(null);
-          setError("スタッフ登録が確認できません。管理者にお問い合わせください。");
-          setPage("staffLogin");
-          return;
+    useEffect(() => {
+        // --- Check for Share ID on initial load ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const shareIdFromUrl = urlParams.get('shareId');
+        if (shareIdFromUrl) {
+            setShareId(shareIdFromUrl);
+            setPage('share');
+            setLoading(false);
+            return; // Skip auth logic if viewing a shared page
         }
-        const meta = staffSnap.data();
-        if (meta.allowed === false) {
-          await signOut(auth);
-          setStaffUser(null);
-          setStaffMeta(null);
-          setError("アカウントの利用が停止されています。管理者にお問い合わせください。");
-          setPage("staffLogin");
-          return;
+
+        // --- Setup Date & Initial Data ---
+        const date = new Date();
+        const days = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
+        setToday(days[date.getDay()]);
+
+        const setupInitialStores = async () => {
+             try {
+                const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
+                if (storesSnapshot.empty) {
+                    const batch = writeBatch(db);
+                    initialStoresData.forEach(store => {
+                        const storeRef = doc(db, storeCollectionPath, store.id);
+                        batch.set(storeRef, store);
+                    });
+                    await batch.commit();
+                }
+            } catch (setupError) {
+                console.error("Error during initial store setup:", setupError);
+            }
+        };
+        setupInitialStores();
+
+        // --- Authentication State Observer ---
+        const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+            if (authUser) {
+                const idTokenResult = await authUser.getIdTokenResult();
+                const userIsAdmin = idTokenResult.claims.admin === true;
+                
+                setUser(authUser);
+                setIsAdmin(userIsAdmin);
+                setPage(userIsAdmin ? 'admin' : 'staffCustomers');
+                
+            } else {
+                setUser(null);
+                setIsAdmin(false);
+                setPage('login');
+            }
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const navigateTo = (targetPage, data = null) => {
+        if (targetPage === 'adminCustomerDetail' || targetPage === 'staffCustomerDetail') {
+            setSelectedCustomer(data);
         }
-        setStaffUser(u);
-        setStaffMeta({ email: meta.email, isAdmin: !!meta.isAdmin, allowed: meta.allowed !== false });
-        // move to customer login screen if currently on login
-        if (page === "staffLogin" || page === "staffRegister") setPage("customerLogin");
-      } catch (e) {
-        console.error("Auth state check failed:", e);
-        setError("認証情報の取得に失敗しました。");
+        if (targetPage === 'adminStoreEdit') setEditingStore(data);
+        if (targetPage === 'list') {
+            setSelectedCustomer(data);
+        }
+        setPage(targetPage);
+    };
+    
+    const handleLogout = async () => { 
         await signOut(auth);
-        setStaffUser(null);
-        setStaffMeta(null);
-        setPage("staffLogin");
-      }
-    });
-    return () => unsub();
-  }, [page]);
-
-  // --- staff auth handlers ---
-  const handleStaffLogin = async (email, password) => {
-    setError("");
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will validate staff doc and navigate
-      console.log("signed in:", cred.user.uid);
-    } catch (e) {
-      console.error(e);
-      if (e.code === "auth/user-not-found") setError("このメールアドレスは登録されていません。");
-      else if (e.code === "auth/wrong-password") setError("パスワードが間違っています。");
-      else if (e.code === "auth/too-many-requests") setError("ログイン試行が多すぎます。しばらくしてから試してください。");
-      else setError(e.message || "スタッフログインに失敗しました。");
-    }
-  };
-
-  const handleStaffRegister = async (email, password, masterPassword) => {
-    setError("");
-    try {
-      if (masterPassword !== MASTER_PASSWORD) {
-        setError("マスターパスワードが違います。");
-        return;
-      }
-      // create user
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = cred.user.uid;
-
-      // determine isAdmin: if this is the very first staff, make admin
-      let isAdmin = false;
-      try {
-        const snap = await getDocs(collection(db, staffCollectionPath));
-        if (snap.empty) isAdmin = true;
-      } catch (e) {
-        console.warn("staff list check failed", e);
-      }
-
-      // create staff doc
-      await setDoc(doc(db, staffCollectionPath, uid), {
-        email,
-        isAdmin,
-        allowed: true,
-        createdAt: new Date(),
-      });
-
-      // onAuthStateChanged will pick this up and continue
-    } catch (e) {
-      console.error(e);
-      if (e.code === "auth/email-already-in-use") setError("そのメールアドレスは既に使われています。");
-      else if (e.code === "auth/weak-password") setError("パスワードは6文字以上にしてください。");
-      else if (e.code === "auth/operation-not-allowed") setError("Email/パスワード認証が有効化されていません。Firebase コンソールで有効にしてください。");
-      else setError(e.message || "スタッフ登録に失敗しました。");
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (e) {
-      console.error(e);
-    }
-    setStaffUser(null);
-    setStaffMeta(null);
-    setCustomerId(null);
-    setCustomerData(null);
-    setPage("staffLogin");
-  };
-
-  // --- customer login and creation ---
-  const handleCustomerLogin = async (id) => {
-    setError("");
-    try {
-      const ref = doc(db, customerCollectionPath, id);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        setError("顧客IDが見つかりません。");
-        return;
-      }
-      const data = snap.data();
-      if (!staffUser || data.assignedStaffId !== staffUser.uid) {
-        setError("この顧客はあなたの担当ではありません。");
-        return;
-      }
-      setCustomerId(id);
-      setCustomerData(data);
-      setPage("list");
-    } catch (e) {
-      console.error(e);
-      setError("顧客ログインに失敗しました。");
-    }
-  };
-
-  const handleCreateNewCustomer = async () => {
-    setError("");
-    try {
-      const storesSnap = await getDocs(collection(db, storeCollectionPath));
-      const storeStatuses = storesSnap.docs.map((d) => ({ storeId: d.id, status: "active" }));
-      const newCustomer = {
-        nickname: "新規顧客",
-        storeStatuses,
-        createdAt: new Date(),
-        preferences: "",
-        possessedIdTypes: [],
-        assignedStaffId: staffUser?.uid || null,
-      };
-      const randomPart = Math.random().toString(36).slice(2, 8);
-      const newId = `&${randomPart}`;
-      await setDoc(doc(db, customerCollectionPath, newId), newCustomer);
-      setCustomerId(newId);
-      setCustomerData(newCustomer);
-      setPage("list");
-    } catch (e) {
-      console.error(e);
-      setError("新規顧客の作成に失敗しました。");
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {page === "staffLogin" && (
-        <StaffLoginScreen
-          weekday={weekday}
-          error={error}
-          onLogin={handleStaffLogin}
-          onSwitch={() => setPage("staffRegister")}
-        />
-      )}
-
-      {page === "staffRegister" && (
-        <StaffRegisterScreen
-          error={error}
-          onRegister={handleStaffRegister}
-          onSwitch={() => setPage("staffLogin")}
-        />
-      )}
-
-      {page === "customerLogin" && staffUser && (
-        <CustomerLoginScreen
-          weekday={weekday}
-          error={error}
-          staffUser={staffUser}
-          onLogin={handleCustomerLogin}
-          onCreate={handleCreateNewCustomer}
-        />
-      )}
-
-      {page === "list" && staffUser && staffMeta && customerId && customerData && (
-        <StoreShell
-          weekday={weekday}
-          staffUser={staffUser}
-          staffMeta={staffMeta}
-          customerId={customerId}
-          customerData={customerData}
-          setCustomerData={setCustomerData}
-          onLogout={handleLogout}
-        />
-      )}
-    </div>
-  );
-}
-
-/*********************************
- * Screens — Staff Auth
- *********************************/
-function StaffLoginScreen({ weekday, error, onLogin, onSwitch }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  return (
-    <div className="flex flex-col items-center justify-center h-screen p-6">
-      <div className="absolute top-5 bg-blue-600 text-white px-4 py-1 rounded">本日は{weekday}</div>
-      <div className="w-full max-w-sm bg-gray-800 rounded-2xl p-6 shadow">
-        <h1 className="text-2xl font-bold mb-4">スタッフログイン</h1>
-        <input
-          className="mb-2 p-2 w-full text-black rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="メールアドレス"
-        />
-        <input
-          className="mb-3 p-2 w-full text-black rounded"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="パスワード"
-        />
-        <button
-          className="w-full bg-pink-600 hover:bg-pink-500 transition px-4 py-2 rounded"
-          onClick={() => onLogin(email, password)}
-        >
-          ログイン
-        </button>
-        <button className="mt-4 text-blue-300" onClick={onSwitch}>
-          新規スタッフ登録
-        </button>
-        {error && <p className="text-red-400 mt-2 text-sm">{error}</p>}
-      </div>
-    </div>
-  );
-}
-
-function StaffRegisterScreen({ error, onRegister, onSwitch }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [master, setMaster] = useState("");
-  return (
-    <div className="flex flex-col items-center justify-center h-screen p-6">
-      <div className="w-full max-w-sm bg-gray-800 rounded-2xl p-6 shadow">
-        <h1 className="text-2xl font-bold mb-4">スタッフ新規登録</h1>
-        <input
-          className="mb-2 p-2 w-full text-black rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="メールアドレス"
-        />
-        <input
-          className="mb-2 p-2 w-full text-black rounded"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="パスワード (6文字以上)"
-        />
-        <input
-          className="mb-3 p-2 w-full text-black rounded"
-          type="password"
-          value={master}
-          onChange={(e) => setMaster(e.target.value)}
-          placeholder="マスターパスワード"
-        />
-        <button
-          className="w-full bg-pink-600 hover:bg-pink-500 transition px-4 py-2 rounded"
-          onClick={() => onRegister(email, password, master)}
-        >
-          登録
-        </button>
-        <button className="mt-4 text-blue-300" onClick={onSwitch}>
-          ログイン画面へ戻る
-        </button>
-        {error && <p className="text-red-400 mt-2 text-sm">{error}</p>}
-        <p className="text-xs text-gray-400 mt-2">注意: マスターパスワードはクライアント側で検証します。セキュリティ上の改良は後述します。</p>
-      </div>
-    </div>
-  );
-}
-
-/*********************************
- * Customer Login
- *********************************/
-function CustomerLoginScreen({ weekday, error, staffUser, onLogin, onCreate }) {
-  const [inputId, setInputId] = useState("");
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const q = query(collection(db, customerCollectionPath), where("assignedStaffId", "==", staffUser.uid));
-        const snap = await getDocs(q);
-        if (!active) return;
-        setCustomers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } finally {
-        if (active) setLoading(false);
-      }
+        setSelectedCustomer(null);
+        setPage('login'); 
     };
-    load();
-    return () => (active = false);
-  }, [staffUser?.uid]);
 
-  return (
-    <div className="flex flex-col items-center min-h-screen p-6">
-      <div className="sticky top-0 w-full max-w-2xl bg-gray-900/80 backdrop-blur z-10 py-3">
-        <div className="text-sm text-gray-300">本日は{weekday}</div>
-        <h1 className="text-2xl font-bold">顧客ログイン</h1>
-      </div>
+    const renderPage = () => {
+        if (loading || page === 'loading') return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading...</div>;
+        switch (page) {
+            case 'login': return <LoginScreen setError={setError} error={error} />;
+            case 'share': return <SharedListScreen shareId={shareId} />;
+            case 'list': return <StoreListScreen customer={selectedCustomer} setCustomer={setSelectedCustomer} navigateTo={navigateTo} listFilter={listFilter} setListFilter={setListFilter} today={today} staffId={user.uid} onLogout={handleLogout} />;
+            // Admin pages
+            case 'admin': return <AdminScreen navigateTo={navigateTo} onLogout={handleLogout} />;
+            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} />;
+            case 'adminCustomerDetail': return <AdminCustomerDetailScreen customer={selectedCustomer} navigateTo={navigateTo} />;
+            case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
+            case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
+            // Staff pages
+            case 'staffCustomers': return <StaffCustomersScreen navigateTo={navigateTo} staffId={user.uid} onLogout={handleLogout} />;
+            default: return <LoginScreen setError={setError} error={error} />;
+        }
+    };
 
-      <div className="w-full max-w-2xl mt-4 bg-gray-800 rounded-2xl p-4">
-        <div className="flex gap-2">
-          <input
-            className="flex-1 p-2 rounded text-black"
-            value={inputId}
-            onChange={(e) => setInputId(e.target.value)}
-            placeholder="顧客IDを入力"
-          />
-          <button className="px-4 py-2 rounded bg-pink-600 hover:bg-pink-500" onClick={() => onLogin(inputId)}>
-            顧客IDでログイン
-          </button>
-          <button className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600" onClick={onCreate}>
-            新規顧客作成
-          </button>
+    return (
+        <div className="bg-gray-900 text-white min-h-screen font-sans">
+            <div className="container mx-auto max-w-lg p-0">
+                {renderPage()}
+            </div>
         </div>
-        {error && <p className="text-red-400 mt-2 text-sm">{error}</p>}
-      </div>
-
-      <div className="w-full max-w-2xl mt-6">
-        <h2 className="font-bold mb-2">担当顧客一覧</h2>
-        {loading ? (
-          <div className="text-gray-400">読み込み中...</div>
-        ) : customers.length === 0 ? (
-          <div className="text-gray-400">担当顧客がいません。新規作成してください。</div>
-        ) : (
-          <ul className="grid sm:grid-cols-2 gap-2">
-            {customers.map((c) => (
-              <li key={c.id} className="bg-gray-800 rounded-xl p-3 flex items-center justify-between">
-                <div>
-                  <div className="font-semibold">{c.nickname || "(名称未設定)"}</div>
-                  <div className="text-xs text-gray-400">{c.id}</div>
-                </div>
-                <button className="px-3 py-1 rounded bg-green-600 hover:bg-green-500 text-sm" onClick={() => onLogin(c.id)}>
-                  この顧客で入る
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
+    );
 }
 
-/*********************************
- * Store Shell (header + admin access)
- *********************************/
-function StoreShell({ weekday, staffUser, staffMeta, customerId, customerData, setCustomerData, onLogout }) {
-  const [view, setView] = useState({ name: "list", storeId: null });
-  const [adminOpen, setAdminOpen] = useState(false);
+// --- Screen Components ---
 
-  const handleEnterDetail = (storeId) => setView({ name: "detail", storeId });
-  const handleBackToList = () => setView({ name: "list", storeId: null });
+function LoginScreen({ setError, error }) {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
-  const updateStoreStatus = async (storeId, nextStatus) => {
-    const statuses = Array.isArray(customerData.storeStatuses) ? [...customerData.storeStatuses] : [];
-    const idx = statuses.findIndex((s) => s.storeId === storeId);
-    if (idx >= 0) statuses[idx] = { ...statuses[idx], status: nextStatus };
-    else statuses.push({ storeId, status: nextStatus });
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setError('');
+        if (!email || !password) {
+            setError('メールアドレスとパスワードを入力してください。');
+            return;
+        }
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            // onAuthStateChanged will handle navigation
+        } catch (authError) {
+            console.error("Firebase Auth Error:", authError);
+            setError("ログインに失敗しました。入力内容を確認してください。");
+        }
+    };
 
-    const next = { ...customerData, storeStatuses: statuses };
-    setCustomerData(next);
-    try {
-      await updateDoc(doc(db, customerCollectionPath, customerId), { storeStatuses: statuses });
-    } catch (e) {
-      console.error(e);
-    }
-  };
+    return (
+        <div className="flex flex-col justify-center items-center h-screen p-6 bg-gray-900">
+             <h1 className="text-4xl font-bold text-pink-400 mb-2">Host-Manager</h1>
+            <p className="text-gray-400 mb-8">スタッフとしてログインしてください</p>
+            <form onSubmit={handleLogin} className="w-full max-w-sm">
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" className="w-full mb-4 px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors" />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors" />
+                <button type="submit" className="w-full mt-6 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">ログイン</button>
+            </form>
+            {error && <p className="text-red-500 mt-4 text-center">{error}</p>}
+        </div>
+    );
+}
 
-  return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-20 bg-gray-900/80 backdrop-blur border-b border-white/10">
-        <div className="max-w-5xl mx-auto p-3 flex items-center justify-between">
-          <div>
-            <div className="text-xs text-gray-400">{weekday}</div>
-            <div className="font-semibold">顧客: {customerData?.nickname || customerId}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 hidden sm:block">{staffUser?.email}</span>
-            {staffMeta?.isAdmin && (
-              <button className="px-2 py-1 bg-yellow-700 rounded text-sm" onClick={() => setAdminOpen(true)}>
-                管理者メニュー
-              </button>
+function SharedListScreen({ shareId }) {
+    const [listData, setListData] = useState(null);
+    const [stores, setStores] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const fetchSharedList = async () => {
+            if (!shareId) {
+                setError('共有IDが見つかりません。');
+                setLoading(false);
+                return;
+            }
+            try {
+                // 1. Fetch the shared list document
+                const listDocRef = doc(db, sharedListsCollectionPath, shareId);
+                const listDocSnap = await getDoc(listDocRef);
+
+                if (!listDocSnap.exists()) {
+                    setError('この共有リストは存在しないか、削除されました。');
+                    setLoading(false);
+                    return;
+                }
+                const data = listDocSnap.data();
+                setListData(data);
+
+                // 2. Fetch the store details based on the IDs in the list
+                if (data.visitedStoreIds && data.visitedStoreIds.length > 0) {
+                     const fetchedStores = [];
+                     // Firestore 'in' query is limited to 30 items. If more, chunking is needed.
+                     // For simplicity here, assuming under 30.
+                    for (const storeId of data.visitedStoreIds) {
+                        const storeDocRef = doc(db, storeCollectionPath, storeId);
+                        const storeDocSnap = await getDoc(storeDocRef);
+                        if(storeDocSnap.exists()) {
+                            fetchedStores.push({ id: storeDocSnap.id, ...storeDocSnap.data() });
+                        }
+                    }
+                    setStores(fetchedStores);
+                }
+            } catch (e) {
+                console.error("Error fetching shared list:", e);
+                setError('リストの読み込みに失敗しました。');
+            }
+            setLoading(false);
+        };
+        fetchSharedList();
+    }, [shareId]);
+
+    if (loading) return <div className="p-4 text-center">共有リストを読み込み中...</div>;
+    if (error) return <div className="p-4 text-center text-red-400">{error}</div>;
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold text-center mb-1 text-pink-400">{listData?.nickname}様の</h1>
+            <h2 className="text-xl font-bold text-center mb-6">行ったことあるお店リスト</h2>
+            {stores.length > 0 ? (
+                <main className="space-y-3">
+                    {stores.map(store => (
+                        <div key={store.id} className="bg-gray-800 rounded-lg shadow-lg p-4">
+                            <h2 className="text-lg font-bold">{store.name}</h2>
+                            <p className="text-gray-400 text-sm">{store.group}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {store.tags.map(tag => (
+                                    <span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </main>
+            ) : (
+                <p className="text-center text-gray-400 mt-8">このリストにはまだお店が登録されていません。</p>
             )}
-            <button className="text-red-400 hover:text-red-300" onClick={onLogout}>
-              ログアウト
-            </button>
-          </div>
+            <footer className="text-center text-gray-600 mt-8 text-sm">
+                Powered by Host-Manager
+            </footer>
         </div>
-      </header>
-
-      {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} />}
-
-      {view.name === "list" && (
-        <StoreListScreen
-          customerData={customerData}
-          onToggleVisited={(storeId, visited) => updateStoreStatus(storeId, visited ? "visited" : "active")}
-          onOpenDetail={handleEnterDetail}
-        />
-      )}
-
-      {view.name === "detail" && (
-        <StoreDetailScreen storeId={view.storeId} customerData={customerData} onBack={handleBackToList} onMarkVisited={(storeId) => updateStoreStatus(storeId, "visited")} />
-      )}
-    </div>
-  );
+    );
 }
 
-/*********************************
- * Admin Panel — staff 管理（Firestoreベース）
- * - スタッフ一覧
- * - allowed / isAdmin 切替
- * - パスワード再設定メール送信
- * - スタッフドキュメント削除（権限剥奪）
- *********************************/
-function AdminPanel({ onClose }) {
-  const [staffs, setStaffs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState("");
+// StoreListScreen is now for a *specific* customer, managed by staff/admin
+function StoreListScreen({ customer, setCustomer, navigateTo, listFilter, setListFilter, today, staffId, onLogout }) {
+    const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, storeId: null });
+    const [idFilterModalOpen, setIdFilterModalOpen] = useState(false);
+    const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
+    const [priceFilterModalOpen, setPriceFilterModalOpen] = useState(false);
+    const [numberOfPeopleModalOpen, setNumberOfPeopleModalOpen] = useState(false);
+    const [locationTypeFilter, setLocationTypeFilter] = useState(null);
+    const [lateNightFilter, setLateNightFilter] = useState(false);
+    const [selectedGroup, setSelectedGroup] = useState(null);
+    const [selectedPriceRange, setSelectedPriceRange] = useState(null);
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [selectedNumberOfPeople, setSelectedNumberOfPeople] = useState(null);
+    const [allStores, setAllStores] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedStore, setSelectedStore] = useState(null);
+    const [storeToStop, setStoreToStop] = useState(null);
+    
+    const customerId = customer.id;
+    const customerData = customer.data;
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const snap = await getDocs(collection(db, staffCollectionPath));
-        if (!active) return;
-        setStaffs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (active) setLoading(false);
-      }
+    useEffect(() => {
+        const fetchStores = async () => {
+            const querySnapshot = await getDocs(collection(db, storeCollectionPath));
+            setAllStores(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        };
+        fetchStores();
+    }, []);
+
+    const allGroups = useMemo(() => [...new Set(allStores.map(s => s.group) || [])], [allStores]);
+
+    const updateStoreStatus = async (storeId, newStatus) => {
+        const newStoreStatuses = customerData.storeStatuses.map(s => s.storeId === storeId ? { ...s, status: newStatus } : s);
+        const updatedCustomerData = { ...customerData, storeStatuses: newStoreStatuses };
+        setCustomer({ ...customer, data: updatedCustomerData });
+        setStatusUpdateModal({ isOpen: false, storeId: null });
+        try {
+            await updateDoc(getCustomerDocPath(customer.staffId, customerId), { storeStatuses: newStoreStatuses });
+        } catch (e) { console.error("Error updating store status: ", e); }
     };
-    load();
-    return () => (active = false);
-  }, []);
 
-  const refresh = async () => {
-    setLoading(true);
-    const snap = await getDocs(collection(db, staffCollectionPath));
-    setStaffs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    setLoading(false);
-  };
+    const handleToggleStopStore = async (storeId) => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        let currentStopped = customerData.stoppedStores?.filter(s => s.date === todayStr) || [];
+        let newStoppedStores;
+        
+        if (currentStopped.some(s => s.storeId === storeId)) {
+            newStoppedStores = customerData.stoppedStores.filter(s => !(s.storeId === storeId && s.date === todayStr));
+        } else {
+             newStoppedStores = [...(customerData.stoppedStores || []), { storeId, date: todayStr }];
+        }
+        
+        const updatedCustomerData = { ...customerData, stoppedStores: newStoppedStores };
+        setCustomer({ ...customer, data: updatedCustomerData });
 
-  const toggleAllowed = async (staffId, now) => {
-    try {
-      await updateDoc(doc(db, staffCollectionPath, staffId), { allowed: !now });
-      setToast("更新しました");
-      refresh();
-    } catch (e) {
-      console.error(e);
-      setToast("更新に失敗しました");
-    }
-  };
-
-  const toggleAdmin = async (staffId, now) => {
-    try {
-      await updateDoc(doc(db, staffCollectionPath, staffId), { isAdmin: !now });
-      setToast("更新しました");
-      refresh();
-    } catch (e) {
-      console.error(e);
-      setToast("更新に失敗しました");
-    }
-  };
-
-  const sendReset = async (email) => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setToast("再設定メールを送信しました。");
-    } catch (e) {
-      console.error(e);
-      setToast(e.message || "送信に失敗しました");
-    }
-  };
-
-  const deleteStaffDoc = async (staffId) => {
-    try {
-      await deleteDoc(doc(db, staffCollectionPath, staffId));
-      setToast("スタッフ権限を削除しました（Firestore）。");
-      refresh();
-    } catch (e) {
-      console.error(e);
-      setToast("削除に失敗しました");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-40 flex items-start justify-center p-6">
-      <div className="w-full max-w-3xl bg-gray-900 rounded-2xl p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">管理者メニュー（スタッフ管理）</h2>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1 bg-gray-700 rounded" onClick={refresh}>更新</button>
-            <button className="px-3 py-1 bg-red-600 rounded" onClick={onClose}>閉じる</button>
-          </div>
-        </div>
-        {toast && <div className="mb-2 text-green-400">{toast}</div>}
-        {loading ? (
-          <div className="text-gray-400">読み込み中...</div>
-        ) : staffs.length === 0 ? (
-          <div className="text-gray-400">登録スタッフがいません。</div>
-        ) : (
-          <div className="space-y-2">
-            {staffs.map((s) => (
-              <div key={s.id} className="bg-gray-800 p-3 rounded flex items-center justify-between">
-                <div>
-                  <div className="font-semibold">{s.email || "(no-email)"}</div>
-                  <div className="text-xs text-gray-400">uid: {s.id}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-sm">Admin: {s.isAdmin ? "✓" : "-"}</div>
-                  <button className="px-2 py-1 bg-gray-700 rounded" onClick={() => toggleAdmin(s.id, !!s.isAdmin)}>権限切替</button>
-                  <div className="text-sm">Allowed: {s.allowed === false ? "×" : "✓"}</div>
-                  <button className="px-2 py-1 bg-gray-700 rounded" onClick={() => toggleAllowed(s.id, s.allowed !== false)}>{s.allowed === false ? "許可する" : "停止する"}</button>
-                  <button className="px-2 py-1 bg-blue-700 rounded" onClick={() => sendReset(s.email)}>パスワード再設定</button>
-                  <button className="px-2 py-1 bg-red-700 rounded" onClick={() => deleteStaffDoc(s.id)}>Firestore 削除</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/*********************************
- * Store List + Detail (same as previous full implementation)
- *********************************/
-function StoreListScreen({ customerData, onToggleVisited, onOpenDetail }) {
-  const [allStores, setAllStores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [uiPrefs, setUiPrefs] = useState(() => {
-    try {
-      const raw = localStorage.getItem("storeListUIPrefs:v1");
-      return raw ? JSON.parse(raw) : { search: "", sortKey: "name", sortDir: "asc", filterVisited: "all", tagFilters: [] };
-    } catch (e) {
-      return { search: "", sortKey: "name", sortDir: "asc", filterVisited: "all", tagFilters: [] };
-    }
-  });
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const snap = await getDocs(collection(db, storeCollectionPath));
-        if (!active) return;
-        setAllStores(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } finally {
-        if (active) setLoading(false);
-      }
+        try {
+            await updateDoc(getCustomerDocPath(customer.staffId, customerId), { stoppedStores: newStoppedStores });
+        } catch (e) { console.error("Error stopping store: ", e); }
+        setStoreToStop(null);
     };
-    load();
-    return () => (active = false);
-  }, []);
+    
+    const combinedStores = useMemo(() => {
+        if (!allStores.length) return [];
+        return allStores.map(store => {
+            const statusInfo = customerData.storeStatuses.find(s => s.storeId === store.id);
+            return { ...store, status: statusInfo?.status || 'active' };
+        });
+    }, [allStores, customerData]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("storeListUIPrefs:v1", JSON.stringify(uiPrefs));
-    } catch (_) {}
-  }, [uiPrefs]);
+    const filteredStores = useMemo(() => {
+        let stores = [...combinedStores];
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const stoppedToday = customerData?.stoppedStores?.filter(s => s.date === todayStr).map(s => s.storeId) || [];
 
-  const statusMap = useMemo(() => {
-    const m = new Map();
-    for (const s of customerData?.storeStatuses || []) m.set(s.storeId, s.status || "active");
-    return m;
-  }, [customerData?.storeStatuses]);
+        stores = stores.filter(s => !stoppedToday.includes(s.id));
 
-  const decorated = useMemo(() => allStores.map((s) => ({ ...s, __status: statusMap.get(s.id) || "active" })), [allStores, statusMap]);
-
-  const filtered = useMemo(() => {
-    let list = [...decorated];
-    const term = (uiPrefs.search || "").trim().toLowerCase();
-    if (term) {
-      list = list.filter((s) => (s.name || "").toLowerCase().includes(term) || (s.group || "").toLowerCase().includes(term) || (Array.isArray(s.tags) && s.tags.some((t) => (t || "").toLowerCase().includes(term))));
-    }
-    if (Array.isArray(uiPrefs.tagFilters) && uiPrefs.tagFilters.length) {
-      list = list.filter((s) => Array.isArray(s.tags) && uiPrefs.tagFilters.every((tag) => s.tags.includes(tag)));
-    }
-    if (uiPrefs.filterVisited === "visited") list = list.filter((s) => s.__status === "visited");
-    if (uiPrefs.filterVisited === "notVisited") list = list.filter((s) => s.__status !== "visited");
-    return list;
-  }, [decorated, uiPrefs]);
-
-  const sorted = useMemo(() => {
-    const list = [...filtered];
-    const { sortKey, sortDir } = uiPrefs;
-    const dir = sortDir === "desc" ? -1 : 1;
-    list.sort((a, b) => {
-      const av = (a?.[sortKey] ?? "").toString().toLowerCase();
-      const bv = (b?.[sortKey] ?? "").toString().toLowerCase();
-      if (av < bv) return -1 * dir;
-      if (av > bv) return 1 * dir;
-      return 0;
-    });
-    return list;
-  }, [filtered, uiPrefs]);
-
-  const allTags = useMemo(() => {
-    const bag = new Set();
-    for (const s of allStores) (s.tags || []).forEach((t) => bag.add(t));
-    return Array.from(bag).sort();
-  }, [allStores]);
-
-  return (
-    <div className="max-w-5xl mx-auto p-4 pb-24">
-      <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
-        <div className="flex-1">
-          <label className="text-sm text-gray-400">検索</label>
-          <input className="w-full p-2 rounded text-black" placeholder="店舗名 / グループ / タグ" value={uiPrefs.search} onChange={(e) => setUiPrefs({ ...uiPrefs, search: e.target.value })} />
-        </div>
-        <div className="flex gap-2 items-end">
-          <div>
-            <label className="text-sm text-gray-400 block">ソート</label>
-            <select className="p-2 rounded text-black" value={uiPrefs.sortKey} onChange={(e) => setUiPrefs({ ...uiPrefs, sortKey: e.target.value })}>
-              <option value="name">店名</option>
-              <option value="group">グループ</option>
-              <option value="initialPriceText">初回表記</option>
-            </select>
-          </div>
-          <button className="p-2 rounded bg-gray-700" onClick={() => setUiPrefs({ ...uiPrefs, sortDir: uiPrefs.sortDir === "asc" ? "desc" : "asc" })} title="昇順/降順切り替え">{uiPrefs.sortDir === "asc" ? "昇順" : "降順"}</button>
-          <div>
-            <label className="text-sm text-gray-400 block">訪問フィルタ</label>
-            <select className="p-2 rounded text-black" value={uiPrefs.filterVisited} onChange={(e) => setUiPrefs({ ...uiPrefs, filterVisited: e.target.value })}>
-              <option value="all">すべて</option>
-              <option value="visited">行ったことある</option>
-              <option value="notVisited">未訪問</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {allTags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {allTags.map((tag) => {
-            const active = uiPrefs.tagFilters.includes(tag);
-            return (
-              <button key={tag} className={cx("px-2 py-1 rounded text-sm", active ? "bg-pink-600" : "bg-gray-700 hover:bg-gray-600")} onClick={() => setUiPrefs({ ...uiPrefs, tagFilters: active ? uiPrefs.tagFilters.filter((t) => t !== tag) : [...uiPrefs.tagFilters, tag] })} title={active ? "タグを外す" : "タグで絞り込む"}>
-                {tag} <span className="opacity-70 ml-1">{active ? "×" : "+"}</span>
-              </button>
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            stores = stores.filter(s =>
+                s.name.toLowerCase().includes(lowercasedTerm) ||
+                s.group.toLowerCase().includes(lowercasedTerm) ||
+                (s.phoneticName && s.phoneticName.toLowerCase().includes(lowercasedTerm)) ||
+                (s.tags && s.tags.some(tag => tag.toLowerCase().includes(lowercasedTerm)))
             );
-          })}
-          {uiPrefs.tagFilters.length > 0 && (
-            <button className="ml-1 px-2 py-1 rounded text-sm bg-gray-700 hover:bg-gray-600" onClick={() => setUiPrefs({ ...uiPrefs, tagFilters: [] })} title="すべてのタグ条件をクリア">すべて解除 ×</button>
-          )}
-        </div>
-      )}
+        }
 
-      <div className="mt-4 grid md:grid-cols-2 gap-3">
-        {loading && <div className="text-gray-400">読み込み中...</div>}
-        {!loading && sorted.length === 0 && <div className="text-gray-400">該当する店舗がありません。</div>}
-        {sorted.map((store) => {
-          const visited = store.__status === "visited";
-          const isClosedToday = (store?.closingDay || "").includes(dayNames[new Date().getDay()]);
-          return (
-            <div key={store.id} className="bg-gray-800 rounded-2xl p-4 shadow">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="font-bold text-lg">{store.name}</div>
-                  <div className="text-xs text-gray-400">{store.group}</div>
-                </div>
-                <button className={cx("px-3 py-1 rounded text-sm", visited ? "bg-green-700" : "bg-gray-700 hover:bg-gray-600")} onClick={() => onToggleVisited(store.id, !visited)} title={visited ? "未訪問に戻す" : "行ったことあるに追加"}>{visited ? "行ったことある✓" : "行ったことあるに追加"}</button>
-              </div>
+        if (listFilter === 'visited') stores = stores.filter(s => s.status === 'visited');
+        else stores = stores.filter(s => s.status === 'active' || s.status === 'unwanted');
+        
+        if (selectedGroup) stores = stores.filter(s => s.group === selectedGroup);
+        if (selectedPriceRange) stores = stores.filter(s => s.initialPriceMin >= selectedPriceRange.min && s.initialPriceMin <= selectedPriceRange.max);
+        if (selectedIds.length > 0) stores = stores.filter(s => selectedIds.every(id => s.requiredIds.includes(id)));
+        if (selectedNumberOfPeople) stores = stores.filter(s => s.numberOfPeople >= selectedNumberOfPeople.value);
+        if (locationTypeFilter) stores = stores.filter(s => s.locationType === locationTypeFilter);
+        if (lateNightFilter) stores = stores.filter(s => s.lateNightOption !== '不可');
 
-              <div className="mt-2 text-sm">
-                <div>営業時間など: {store.openingTime || "-"}</div>
-                <div>定休日: {store.closingDay || "-"}{isClosedToday && <span className="ml-2 text-yellow-300">(本日休み)</span>}</div>
-                <div>初回: {store.initialPriceText || "-"}</div>
-              </div>
+        const activeStores = stores.filter(s => s.closingDay !== today && s.status !== 'unwanted');
+        const unwantedStores = stores.filter(s => s.status === 'unwanted');
+        const closedStores = stores.filter(s => s.closingDay === today);
 
-              <div className="mt-2 flex flex-wrap gap-1">{(store.tags || []).map((t) => (<span key={t} className="text-xs bg-gray-700 px-2 py-1 rounded">{t}</span>))}</div>
+        activeStores.sort((a, b) => {
+            const backChargeA = parseInt(a.backCharge.replace(/[^0-9]/g, ''), 10) || 0;
+            const backChargeB = parseInt(b.backCharge.replace(/[^0-9]/g, ''), 10) || 0;
+            return backChargeB - backChargeA;
+        });
 
-              <div className="mt-3 flex gap-2">
-                <button className="px-3 py-1 rounded bg-blue-700 hover:bg-blue-600 text-sm" onClick={() => onOpenDetail(store.id)}>詳細を見る</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function StoreDetailScreen({ storeId, customerData, onBack, onMarkVisited }) {
-  const [store, setStore] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const visited = useMemo(() => (customerData?.storeStatuses || []).some((s) => s.storeId === storeId && s.status === "visited"), [customerData?.storeStatuses, storeId]);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const snap = await getDoc(doc(db, storeCollectionPath, storeId));
-        if (!active) return;
-        setStore(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-      } finally {
-        if (active) setLoading(false);
-      }
+        return [...activeStores, ...unwantedStores, ...closedStores];
+    }, [combinedStores, listFilter, selectedGroup, selectedPriceRange, selectedIds, searchTerm, selectedNumberOfPeople, locationTypeFilter, lateNightFilter, customerData, today]);
+    
+    const resetFilters = () => {
+        setLocationTypeFilter(null); setLateNightFilter(false); setSelectedGroup(null);
+        setSelectedPriceRange(null); setSelectedIds([]); setSelectedNumberOfPeople(null); setSearchTerm('');
     };
-    load();
-    return () => (active = false);
-  }, [storeId]);
 
-  return (
-    <div className="max-w-3xl mx-auto p-4">
-      <button className="text-blue-300 hover:text-blue-200" onClick={onBack}>← 一覧に戻る</button>
-
-      {loading && <div className="mt-4 text-gray-400">読み込み中...</div>}
-      {!loading && !store && <div className="mt-4 text-red-300">店舗が見つかりません。</div>}
-
-      {store && (
-        <div className="mt-4 bg-gray-800 rounded-2xl p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold">{store.name}</h1>
-              <div className="text-sm text-gray-400">{store.group}</div>
-            </div>
-            <button className={cx("px-3 py-1 rounded text-sm", visited ? "bg-green-700" : "bg-gray-700 hover:bg-gray-600")} onClick={() => onMarkVisited(store.id)}>{visited ? "行ったことある✓" : "行ったことあるに追加"}</button>
-          </div>
-
-          <div className="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
-            <div>
-              <div className="text-gray-400">営業時間など</div>
-              <div>{store.openingTime || "-"}</div>
-            </div>
-            <div>
-              <div className="text-gray-400">定休日</div>
-              <div>{store.closingDay || "-"} <span className="text-xs text-gray-400">(休業日でも詳細は閲覧可能)</span></div>
-            </div>
-            <div>
-              <div className="text-gray-400">初回</div>
-              <div>{store.initialPriceText || "-"}</div>
-            </div>
-            <div>
-              <div className="text-gray-400">タグ</div>
-              <div className="flex flex-wrap gap-1 mt-1">{(store.tags || []).map((t) => (<span key={t} className="px-2 py-1 rounded bg-gray-700 text-xs">{t}</span>))}</div>
-            </div>
-          </div>
-
-          {store.description && (<div className="mt-4 whitespace-pre-wrap text-sm leading-6">{store.description}</div>)}
+    return (
+        <div className="pb-28">
+            <header className="p-4 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-10">
+                <button onClick={() => navigateTo('staffCustomers')} className="absolute top-4 left-4 text-pink-400 flex items-center gap-2"><ArrowLeft /> 顧客リストへ</button>
+                <h1 className="text-2xl font-bold text-center pt-10 mb-4">{listFilter === 'visited' ? '行ったことある店' : `${customerData?.nickname}様の店舗リスト`}</h1>
+                <div className="mb-4">
+                    <input type="text" placeholder="店名、グループ、タグ、読み仮名で検索..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-pink-500" />
+                </div>
+                <div className="flex space-x-2 overflow-x-auto pb-2 -mx-4 px-4">
+                    <button onClick={resetFilters} className="whitespace-nowrap px-4 py-2 text-sm font-semibold bg-gray-600 rounded-full hover:bg-gray-700 transition-colors">リセット</button>
+                    <button onClick={() => setGroupFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedGroup ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>グループ</button>
+                    <button onClick={() => setPriceFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedPriceRange ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>料金</button>
+                    <button onClick={() => setIdFilterModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedIds.length > 0 ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>身分証</button>
+                    <button onClick={() => setNumberOfPeopleModalOpen(true)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${selectedNumberOfPeople ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>人数</button>
+                    <button onClick={() => setLocationTypeFilter(locationTypeFilter === 'walk' ? null : 'walk')} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${locationTypeFilter === 'walk' ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>🚶</button>
+                    <button onClick={() => setLocationTypeFilter(locationTypeFilter === 'house' ? null : 'house')} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${locationTypeFilter === 'house' ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>🏠</button>
+                    <button onClick={() => setLateNightFilter(!lateNightFilter)} className={`whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-colors ${lateNightFilter ? 'bg-pink-500 text-white' : 'bg-gray-800 hover:bg-pink-500'}`}>遅い時間帯可</button>
+                </div>
+            </header>
+            <main className="p-4 space-y-3">
+                {filteredStores.map(store => (
+                    <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg transition-all duration-300 flex items-center p-4 ${store.status === 'unwanted' ? 'opacity-40' : ''}`}>
+                        <div className="grow" onClick={() => setSelectedStore(store)}>
+                            <div className="flex items-center gap-2"><h2 className="text-lg font-bold">{store.name}</h2>{store.locationType === 'walk' ? '🚶' : '🏠'}{store.contactType === 'phone' ? '📱' : '❌'}</div>
+                            <p className="text-gray-400 text-sm">{store.group} / {store.openingTime} / {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`} / ~{store.numberOfPeople}人</p>
+                            <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
+                        </div>
+                        <div className="flex items-center">
+                            <button onClick={() => setStoreToStop(store)} className="mr-2 bg-yellow-600 text-white rounded-full p-2 hover:bg-yellow-700 transition-colors"><Ban className="w-5 h-5" /></button>
+                            <button onClick={() => setStatusUpdateModal({ isOpen: true, storeId: store.id })} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500 transition-colors"><X className="w-5 h-5" /></button>
+                        </div>
+                         {store.closingDay === today && (<div className="absolute inset-0 bg-black/30 flex justify-center items-center rounded-lg pointer-events-none"><span className="text-white text-xl font-bold transform -rotate-12">定休日</span></div>)}
+                    </div>
+                ))}
+            </main>
+            {selectedStore && <StoreDetailScreen store={selectedStore} onClose={() => setSelectedStore(null)} />}
+            {statusUpdateModal.isOpen && <StatusUpdateModal onClose={() => setStatusUpdateModal({ isOpen: false, storeId: null })} onUpdate={(newStatus) => updateStoreStatus(statusUpdateModal.storeId, newStatus)} />}
+            {idFilterModalOpen && <IdSelectionModal currentSelected={selectedIds} onClose={() => setIdFilterModalOpen(false)} onApply={setSelectedIds} />}
+            {groupFilterModalOpen && <GroupSelectionModal groups={allGroups} onClose={() => setGroupFilterModalOpen(false)} onSelect={(group) => { setSelectedGroup(group); setGroupFilterModalOpen(false); }} />}
+            {priceFilterModalOpen && <PriceSelectionModal onClose={() => setPriceFilterModalOpen(false)} onSelect={(range) => { setSelectedPriceRange(range); setPriceFilterModalOpen(false); }} />}
+            {numberOfPeopleModalOpen && <NumberOfPeopleSelectionModal onClose={() => setNumberOfPeopleModalOpen(false)} onSelect={(option) => { setSelectedNumberOfPeople(option); setNumberOfPeopleModalOpen(false); }} />}
+            {storeToStop && <ConfirmationModal isOpen={!!storeToStop} onClose={() => setStoreToStop(null)} onConfirm={() => handleToggleStopStore(storeToStop.id)} title="終日ストップ" message={`「${storeToStop.name}」を終日ストップしますか？`} />}
+             <BottomNavBar currentFilter={listFilter} setFilter={setListFilter} onLogout={onLogout}/>
         </div>
-      )}
-    </div>
-  );
+    );
 }
+
+function StoreDetailScreen({ store, onClose }) {
+    // Unchanged, but kept for completeness
+    const [showPasswordInput, setShowPasswordInput] = useState(false);
+    const [password, setPassword] = useState('');
+    const [memo, setMemo] = useState('');
+    const [memoUnlocked, setMemoUnlocked] = useState(false);
+    const [modalMessage, setModalMessage] = useState('');
+
+    const handlePasswordCheck = () => {
+        if (password === '1234') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
+        else { setModalMessage('パスワードが違います'); }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 overflow-y-auto max-h-full" onClick={(e) => e.stopPropagation()}>
+                {modalMessage && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setModalMessage('')}><div className="bg-gray-800 p-6 rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}><p className="text-white">{modalMessage}</p><button onClick={() => setModalMessage('')} className="mt-4 w-full bg-pink-600 text-white py-2 rounded-lg">閉じる</button></div></div>)}
+                <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
+                <main className="space-y-6">
+                    <div className="bg-gray-700 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>定休日:</strong> {store.closingDay}</li><li><strong>初回時間:</strong> {store.initialTime}分</li><li><strong>初回料金:</strong> {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>遅い時間帯可:</strong> {store.lateNightOption}</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>タグ:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-600 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
+                    <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
+                    <div className="bg-gray-700 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-600 p-3 rounded">{memo}</p><p><strong>バック料金:</strong> {store.backCharge}</p></div>)}</div>
+                </main>
+            </div>
+        </div>
+    );
+}
+
+function AdminScreen({ navigateTo, onLogout }) {
+    return (
+        <div className="p-4">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">管理者メニュー</h1>
+                <button onClick={onLogout} className="flex items-center gap-2 text-gray-400 hover:text-pink-400"><LogOut/>ログアウト</button>
+            </div>
+            <div className="space-y-4">
+                <button onClick={() => navigateTo('adminStores')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
+                    <h2 className="text-lg font-bold">店舗情報管理</h2><p className="text-sm text-gray-400">店舗の追加、編集を行います</p>
+                </button>
+                 <button onClick={() => navigateTo('adminCustomers')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
+                    <h2 className="text-lg font-bold">全顧客の管理</h2><p className="text-sm text-gray-400">全スタッフの顧客情報を確認します</p>
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function AdminCustomersScreen({ navigateTo }) {
+    const [customers, setCustomers] = useState([]);
+    const [customerToDelete, setCustomerToDelete] = useState(null);
+    const [toast, setToast] = useState('');
+
+    const fetchCustomers = async () => {
+        try {
+            // Use collection group query to get all customers across all staffs
+            const q = query(collectionGroup(db, 'customers'));
+            const querySnapshot = await getDocs(q);
+            const customersList = querySnapshot.docs.map(doc => {
+                const pathParts = doc.ref.path.split('/');
+                const staffId = pathParts[pathParts.indexOf('staffs') + 1];
+                return { id: doc.id, staffId: staffId, ...doc.data() };
+            });
+            setCustomers(customersList);
+        } catch (error) { console.error("Error fetching customers: ", error); }
+    };
+
+    useEffect(() => { fetchCustomers(); }, []);
+
+    const handleDeleteCustomer = async () => {
+        if (!customerToDelete) return;
+        try {
+            await deleteDoc(getCustomerDocPath(customerToDelete.staffId, customerToDelete.id));
+            setToast(`顧客「${customerToDelete.nickname}」を削除しました。`);
+            setCustomerToDelete(null);
+            fetchCustomers();
+        } catch (error) {
+            console.error("Error deleting customer: ", error);
+            setToast('顧客の削除に失敗しました。');
+        }
+        setTimeout(() => setToast(''), 3000);
+    };
+
+    return (
+        <div className="p-4">
+            {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
+            <div className="flex justify-between items-center mb-6">
+                 <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-pink-400"><ArrowLeft />管理メニュー</button>
+                 <h1 className="text-2xl font-bold">全顧客リスト</h1><div className="w-16"></div>
+            </div>
+            <div className="space-y-3">
+                {customers.map(customer => (
+                    <div key={`${customer.staffId}-${customer.id}`} className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                        <div onClick={() => navigateTo('adminCustomerDetail', { id: customer.id, staffId: customer.staffId })} className="cursor-pointer grow">
+                            <p className="font-bold">{customer.nickname}</p>
+                            <p className="text-xs text-gray-400 truncate">担当Staff UID: {customer.staffId}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setCustomerToDelete(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-red-500"><Trash2 className="w-5 h-5" /></button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <ConfirmationModal isOpen={!!customerToDelete} onClose={() => setCustomerToDelete(null)} onConfirm={handleDeleteCustomer} title="顧客の削除" message={`本当に顧客「${customerToDelete?.nickname}」を削除しますか？この操作は元に戻せません。`}/>
+        </div>
+    );
+}
+
+// Staff's version of the customer list screen
+function StaffCustomersScreen({ navigateTo, staffId, onLogout }) {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const createNewCustomer = async () => {
+        try {
+            const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
+            const storeStatuses = storesSnapshot.docs.map(doc => ({ storeId: doc.id, status: 'active' }));
+            const newCustomer = { nickname: "新規顧客", storeStatuses, createdAt: new Date(), preferences: "", possessedIdTypes: [], stoppedStores: [] };
+            
+            const newDocRef = await addDoc(collection(db, getCustomerCollectionPath(staffId)), newCustomer);
+            
+            navigateTo('list', { id: newDocRef.id, data: newCustomer, staffId: staffId });
+        } catch (e) { console.error("Error creating new customer: ", e); }
+    };
+
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            try {
+                const q = query(collection(db, getCustomerCollectionPath(staffId)));
+                const querySnapshot = await getDocs(q);
+                const customersList = querySnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                setCustomers(customersList);
+            } catch (error) { console.error("Error fetching customers: ", error); }
+            setLoading(false);
+        };
+        fetchCustomers();
+    }, [staffId]);
+
+    if (loading) return <div className="p-4 text-center">顧客情報を読み込み中...</div>;
+
+    return (
+        <div className="p-4">
+            <div className="flex justify-between items-center mb-6">
+                 <h1 className="text-2xl font-bold">担当顧客リスト</h1>
+                 <button onClick={onLogout} className="flex items-center gap-2 text-gray-400 hover:text-pink-400"><LogOut/>ログアウト</button>
+            </div>
+             <button onClick={createNewCustomer} className="w-full mb-4 flex items-center justify-center gap-2 p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700"><PlusCircle/>新規顧客を追加</button>
+            <div className="space-y-3">
+                {customers.map(customer => (
+                    <div key={customer.id} onClick={() => navigateTo('list', { ...customer, staffId: staffId })} className="bg-gray-800 rounded-lg p-4 flex items-center justify-between cursor-pointer hover:bg-gray-700">
+                        <div>
+                            <p className="font-bold">{customer.data.nickname}</p>
+                            <p className="text-xs text-gray-400 truncate">作成日: {customer.data.createdAt.toDate().toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// A unified customer detail screen for admins
+function AdminCustomerDetailScreen({ customer, navigateTo }) {
+    const [customerData, setCustomerData] = useState(null);
+    const [allStores, setAllStores] = useState([]);
+    const [preferences, setPreferences] = useState('');
+    const [nickname, setNickname] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState('');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [storeSearchTerm, setStoreSearchTerm] = useState('');
+
+    const { id: customerId, staffId } = customer;
+
+    useEffect(() => {
+        const fetchAllData = async () => {
+            if (!customerId || !staffId) return;
+            setLoading(true);
+            try {
+                const storesSnapshot = await getDocs(collection(db, storeCollectionPath));
+                setAllStores(storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+                const docRef = getCustomerDocPath(staffId, customerId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setCustomerData(data);
+                    setPreferences(data.preferences || '');
+                    setNickname(data.nickname || '');
+                }
+            } catch (error) { console.error("Error fetching customer details: ", error); }
+            setLoading(false);
+        };
+        fetchAllData();
+    }, [customerId, staffId]);
+
+    const handleSave = async () => {
+        try {
+            const customerRef = getCustomerDocPath(staffId, customerId);
+            await updateDoc(customerRef, { 
+                preferences: preferences, nickname: nickname,
+                storeStatuses: customerData.storeStatuses,
+                possessedIdTypes: customerData.possessedIdTypes,
+            });
+            setToast('保存しました！'); setTimeout(() => setToast(''), 2000);
+        } catch (error) {
+            console.error("Error saving customer data: ", error);
+            setToast('保存に失敗しました。'); setTimeout(() => setToast(''), 2000);
+        }
+    };
+
+    const handleDelete = async () => {
+        try {
+            await deleteDoc(getCustomerDocPath(staffId, customerId));
+            setIsDeleteModalOpen(false);
+            setToast('顧客を削除しました。');
+            setTimeout(() => navigateTo('adminCustomers'), 1500);
+        } catch (error) {
+            console.error("Error deleting customer: ", error);
+            setToast('削除に失敗しました。'); setTimeout(() => setToast(''), 2000);
+        }
+    };
+    
+    const handleCreateShareLink = async () => {
+        const visitedStoreIds = customerData.storeStatuses
+            .filter(s => s.status === 'visited')
+            .map(s => s.storeId);
+
+        if (visitedStoreIds.length === 0) {
+            setToast('「行ったことある店」がありません。');
+            setTimeout(() => setToast(''), 3000);
+            return;
+        }
+
+        try {
+            const docRef = await addDoc(collection(db, sharedListsCollectionPath), {
+                nickname: customerData.nickname,
+                visitedStoreIds: visitedStoreIds,
+                createdAt: new Date()
+            });
+            const shareUrl = `${window.location.origin}${window.location.pathname}?shareId=${docRef.id}`;
+            await navigator.clipboard.writeText(shareUrl);
+            setToast('共有リンクをクリップボードにコピーしました！');
+        } catch (error) {
+            console.error("Error creating share link: ", error);
+            setToast('共有リンクの作成に失敗しました。');
+        }
+        setTimeout(() => setToast(''), 3000);
+    };
+
+
+    const handleStoreStatusChange = (storeId, newStatus) => {
+        let newStoreStatuses = [];
+        const existingStatus = customerData.storeStatuses.find(s => s.storeId === storeId);
+        if (existingStatus) {
+            newStoreStatuses = customerData.storeStatuses.map(s => s.storeId === storeId ? { ...s, status: newStatus } : s);
+        } else {
+            newStoreStatuses = [...customerData.storeStatuses, { storeId, status: newStatus }];
+        }
+        setCustomerData(prev => ({ ...prev, storeStatuses: newStoreStatuses }));
+    };
+
+    const handleIdTypeChange = (idType) => {
+        const possessedIdTypes = customerData.possessedIdTypes || [];
+        const newIdTypes = possessedIdTypes.includes(idType)
+            ? possessedIdTypes.filter(id => id !== idType)
+            : [...possessedIdTypes, idType];
+        setCustomerData(prev => ({ ...prev, possessedIdTypes: newIdTypes }));
+    };
+
+    if (loading) return <div className="p-4 text-center">顧客情報を読み込み中...</div>;
+    if (!customerData) return <div className="p-4 text-center">顧客情報が見つかりません。</div>;
+    
+    const filteredStoresForAdmin = allStores.filter(store => store.name.toLowerCase().includes(storeSearchTerm.toLowerCase()) || (store.phoneticName && store.phoneticName.toLowerCase().includes(storeSearchTerm.toLowerCase())));
+
+    return (
+        <div className="p-4 pb-24">
+            {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
+            <button onClick={() => navigateTo('adminCustomers')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />顧客管理に戻る</button>
+            <div className="mb-4">
+                <label className="text-sm text-gray-400">ニックネーム</label>
+                <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full p-2 bg-gray-800 rounded-md mt-1 text-2xl font-bold"/>
+            </div>
+            <div className="bg-gray-800 p-4 rounded-lg mb-6">
+                <h2 className="font-bold text-lg mb-2">行ったことある店</h2>
+                <input type="text" placeholder="店舗名で検索..." value={storeSearchTerm} onChange={(e) => setStoreSearchTerm(e.target.value)} className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 mb-4"/>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                    {filteredStoresForAdmin.map(store => (
+                        <label key={store.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
+                            <input type="checkbox" checked={customerData.storeStatuses.some(s => s.storeId === store.id && s.status === 'visited')} onChange={() => handleStoreStatusChange(store.id, customerData.storeStatuses.some(s => s.storeId === store.id && s.status === 'visited') ? 'active' : 'visited')} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
+                            <span>{store.name}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+            <div className="bg-gray-800 p-4 rounded-lg mb-6">
+                <h2 className="font-bold text-lg mb-2">所持している本人確認書類</h2>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                    {idTypes.map(idType => (
+                        <label key={idType} className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
+                            <input type="checkbox" checked={customerData.possessedIdTypes?.includes(idType)} onChange={() => handleIdTypeChange(idType)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
+                            <span>{idType}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+            <div className="bg-gray-800 p-4 rounded-lg">
+                <h2 className="font-bold text-lg mb-2">お店の好み（メモ）</h2>
+                <textarea value={preferences} onChange={(e) => setPreferences(e.target.value)} className="w-full h-32 p-2 bg-gray-700 rounded-md text-white" placeholder="例：静かなお店が好き、シャンパンコールは苦手など"></textarea>
+            </div>
+            <div className="mt-6 space-y-3">
+                 <button onClick={handleSave} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">保存</button>
+                 <button onClick={handleCreateShareLink} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg"><Share2/>行った店リストの共有リンクを作成</button>
+                 <button onClick={() => setIsDeleteModalOpen(true)} className="w-full bg-red-800 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg">この顧客を削除する</button>
+            </div>
+            <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="顧客の削除" message={`本当に顧客「${nickname}」を削除しますか？この操作は元に戻せません。`}/>
+        </div>
+    );
+}
+
+function AdminStoresScreen({ navigateTo }) {
+    // Unchanged, but kept for completeness
+    const [stores, setStores] = useState([]);
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+	const fetchStores = async () => {
+	  const querySnapshot = await getDocs(collection(db, storeCollectionPath));
+	  const fetchedStores = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+	  fetchedStores.sort((a, b) => a.name.localeCompare(b.name));
+	  setStores(fetchedStores);
+	  setLoading(false);
+	};
+	fetchStores();
+    }, []);
+
+    if (loading) return <div className="p-4 text-center">店舗情報を読み込み中...</div>;
+
+    return (
+        <div className="p-4">
+            <div className="flex justify-between items-center mb-6">
+                <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-pink-400"><ArrowLeft />管理メニュー</button>
+                <h1 className="text-2xl font-bold">店舗管理</h1>
+                <div className="w-16"></div>
+            </div>
+            <button onClick={() => navigateTo('adminStoreEdit', null)} className="w-full mb-4 flex items-center justify-center gap-2 p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700"><PlusCircle/>新規店舗を追加</button>
+            <div className="space-y-3">
+                {stores.map(store => (
+                    <div key={store.id} className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                        <div><p className="font-bold">{store.name}</p><p className="text-xs text-gray-400">{store.group}</p></div>
+                        <button onClick={() => navigateTo('adminStoreEdit', store)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Edit className="w-5 h-5" /></button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function AdminStoreEditScreen({ store, navigateTo }) {
+    // Unchanged, but kept for completeness
+    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialTime: '', closingDay: '', lateNightOption: '不可', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
+    const [hasPriceRange, setHasPriceRange] = useState(false);
+    const [toast, setToast] = useState('');
+
+    useEffect(() => {
+        if (store) {
+            const isRange = store.initialPriceMin !== store.initialPriceMax;
+            setHasPriceRange(isRange);
+            setFormData({ ...store, tags: store.tags.join(', '), requiredIds: store.requiredIds || [], initialPriceMax: isRange ? (store.initialPriceMax || '') : '' });
+        }
+    }, [store]);
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    };
+    const handleIdChange = (id) => setFormData(prev => ({...prev, requiredIds: prev.requiredIds.includes(id) ? prev.requiredIds.filter(i => i !== id) : [...prev.requiredIds, id]}));
+    const handleAttributeChange = (name, value) => setFormData(prev => ({ ...prev, [name]: value }));
+
+    const handleSave = async () => {
+        const minPrice = Number(formData.initialPriceMin) || 0;
+        const maxPrice = hasPriceRange ? (Number(formData.initialPriceMax) || minPrice) : minPrice;
+        const dataToSave = { ...formData, initialPriceMin: minPrice, initialPriceMax: maxPrice, initialPriceText: hasPriceRange ? `${minPrice}円~${maxPrice}円` : `${minPrice}円`, tags: formData.tags.split(',').map(t => t.trim()).filter(t => t), numberOfPeople: Number(formData.numberOfPeople) || 1, initialTime: Number(formData.initialTime) || 0 };
+        
+        try {
+            if (store) { await setDoc(doc(db, storeCollectionPath, store.id), dataToSave); } 
+            else { await addDoc(collection(db, storeCollectionPath), dataToSave); }
+            setToast('保存しました！');
+            setTimeout(() => navigateTo('adminStores'), 1500);
+        } catch (e) {
+            console.error("Error saving store: ", e);
+            setToast('保存に失敗しました。');
+            setTimeout(() => setToast(''), 2000);
+        }
+    };
+
+    return (
+        <div className="p-4 pb-10">
+            {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
+            <button onClick={() => navigateTo('adminStores')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />店舗管理に戻る</button>
+            <h1 className="text-2xl font-bold mb-6">{store ? '店舗情報を編集' : '新規店舗を追加'}</h1>
+            <div className="space-y-4">
+                <div><label className="text-sm text-gray-400">店名</label><input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">グループ</label><input type="text" name="group" value={formData.group} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">読み仮名 / 通称</label><input type="text" name="phoneticName" value={formData.phoneticName} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">営業時間</label><input type="text" name="openingTime" value={formData.openingTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">初回時間 (分)</label><input type="number" name="initialTime" value={formData.initialTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">定休日</label><input type="text" name="closingDay" value={formData.closingDay} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div>
+                    <label className="text-sm text-gray-400">遅い時間帯可</label>
+                    <div className="flex gap-2 mt-1">{lateNightOptions.map(option => (<button key={option.value} onClick={() => handleAttributeChange('lateNightOption', option.value)} className={`px-4 py-2 rounded-full text-sm ${formData.lateNightOption === option.value ? 'bg-pink-500' : 'bg-gray-700'}`}>{option.label}</button>))}</div>
+                </div>
+                <div><label className="flex items-center gap-2 text-sm text-gray-400"><input type="checkbox" checked={hasPriceRange} onChange={(e) => setHasPriceRange(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/><span>料金に差がある</span></label></div>
+                {hasPriceRange ? (
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="text-sm text-gray-400">最低料金 (円)</label><input type="number" name="initialPriceMin" value={formData.initialPriceMin} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                        <div><label className="text-sm text-gray-400">最高料金 (円)</label><input type="number" name="initialPriceMax" value={formData.initialPriceMax} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                    </div>
+                ) : ( <div><label className="text-sm text-gray-400">初回料金 (円)</label><input type="number" name="initialPriceMin" value={formData.initialPriceMin} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div> )}
+                <div><label className="text-sm text-gray-400">バック料金</label><input type="text" name="backCharge" value={formData.backCharge} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">タグ (カンマ区切り)</label><input type="text" name="tags" value={formData.tags} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div>
+                    <label className="text-sm text-gray-400">人数</label>
+                    <select name="numberOfPeople" value={formData.numberOfPeople} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1">{numberOfPeopleOptions.map(option => (<option key={option.value} value={option.value}>{option.label}</option>))}</select>
+                </div>
+                <div>
+                    <label className="text-sm text-gray-400">属性</label>
+                    <div className="flex gap-2 mt-1">
+                        <button onClick={() => handleAttributeChange('locationType', 'walk')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'walk' ? 'bg-pink-500' : 'bg-gray-700'}`}>🚶</button>
+                        <button onClick={() => handleAttributeChange('locationType', 'house')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'house' ? 'bg-pink-500' : 'bg-gray-700'}`}>🏠</button>
+                    </div>
+                    <div className="flex gap-2 mt-1">
+                        <button onClick={() => handleAttributeChange('contactType', 'phone')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'phone' ? 'bg-pink-500' : 'bg-gray-700'}`}>📱</button>
+                        <button onClick={() => handleAttributeChange('contactType', 'none')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'none' ? 'bg-pink-500' : 'bg-gray-700'}`}>❌</button>
+                    </div>
+                </div>
+                <div>
+                    <label className="text-sm text-gray-400">必須身分証</label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">{idTypes.map(id => (<label key={id} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md"><input type="checkbox" checked={formData.requiredIds.includes(id)} onChange={() => handleIdChange(id)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/><span>{id}</span></label>))}</div>
+                </div>
+                <div><label className="text-sm text-gray-400">ホスホスURL</label><input type="url" name="hosuhosuUrl" value={formData.hosuhosuUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">地図URL</label><input type="url" name="mapUrl" value={formData.mapUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">スタッフ専用メモ</label><textarea name="staffMemo" value={formData.staffMemo} onChange={handleChange} className="w-full h-24 p-2 bg-gray-800 rounded-md mt-1"></textarea></div>
+                <button onClick={handleSave} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">保存する</button>
+            </div>
+        </div>
+    );
+}
+
+
+// --- Lower Navigation Bar & Modals (Largely Unchanged) ---
+function BottomNavBar({ currentFilter, setFilter, onLogout }) {
+    return (
+        <nav className="fixed bottom-0 left-0 right-0 bg-gray-800 max-w-lg mx-auto h-20 flex items-center justify-around px-4">
+            <button onClick={() => setFilter('visited')} className={`flex flex-col items-center justify-center w-24 h-full ${currentFilter === 'visited' ? 'text-pink-400' : 'text-gray-400'}`}><CheckSquare className="w-7 h-7 mb-1" /><span className="text-xs">行った店</span></button>
+            <button onClick={() => setFilter('all')} className={`flex items-center justify-center w-20 h-20 -mt-8 rounded-full shadow-lg transition-transform transform hover:scale-110 ${currentFilter === 'all' ? 'bg-pink-600' : 'bg-gray-700'}`}><Home className="w-9 h-9 text-white" /></button>
+            <button onClick={onLogout} className="flex flex-col items-center justify-center w-24 h-full text-gray-400"><LogOut className="w-7 h-7 mb-1" /><span className="text-xs">ログアウト</span></button>
+        </nav>
+    );
+}
+function StatusUpdateModal({ onClose, onUpdate }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">ステータスを選択</h3></div>
+                <div className="flex flex-col p-2">
+                    <button onClick={() => onUpdate('visited')} className="w-full text-left p-3 text-lg text-green-400 hover:bg-gray-700 rounded-md">✅ 行ったことある</button>
+                    <button onClick={() => onUpdate('unwanted')} className="w-full text-left p-3 text-lg text-red-400 hover:bg-gray-700 rounded-md">🚫 行きたくない</button>
+                    <button onClick={onClose} className="w-full text-left p-3 text-lg text-gray-400 hover:bg-gray-700 rounded-md">❌ キャンセル</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+function IdSelectionModal({ currentSelected, onClose, onApply }) {
+    const [selected, setSelected] = useState(currentSelected);
+    const toggleId = (id) => setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">身分証を選択</h3></div>
+                <div className="p-2 space-y-1">{idTypes.map(type => (<label key={type} className="flex items-center gap-3 p-3 hover:bg-gray-700 rounded-md cursor-pointer"><input type="checkbox" checked={selected.includes(type)} onChange={() => toggleId(type)} className="form-checkbox h-5 w-5 bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/><span>{type}</span></label>))}</div>
+                <div className="p-2"><button onClick={() => { onApply(selected); onClose(); }} className="w-full bg-pink-600 text-white font-bold py-2 rounded-lg">適用</button></div>
+            </div>
+        </div>
+    );
+}
+function GroupSelectionModal({ groups, onClose, onSelect }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">グループを選択</h3></div>
+                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
+                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべてのグループ</button>
+                    {groups.map(group => (<button key={group} onClick={() => onSelect(group)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{group}</button>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+function PriceSelectionModal({ onClose, onSelect }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">料金を選択</h3></div>
+                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
+                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての料金</button>
+                    {priceFilterRanges.map(range => (<button key={range.label} onClick={() => onSelect(range)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{range.label}</button>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+function NumberOfPeopleSelectionModal({ onClose, onSelect }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">人数を選択</h3></div>
+                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
+                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての人数</button>
+                    {numberOfPeopleOptions.map(option => (<button key={option.label} onClick={() => onSelect(option)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{option.label}</button>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="font-bold text-lg text-center mb-2">{title}</h3>
+                <p className="text-gray-300 text-center mb-6">{message}</p>
+                <div className="flex gap-4">
+                    <button onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">キャンセル</button>
+                    <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">OK</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default App;
