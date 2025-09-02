@@ -176,7 +176,7 @@ function App() {
             <div className="container mx-auto max-w-lg p-0">
                 {renderPage()}
             </div>
-            {page === 'list' && <BottomNavBar currentFilter={listFilter} setFilter={setListFilter} onLogout={() => { setCustomerId(null); setCustomerData(null); setPage('customerSelection'); }} />}
+            {page === 'list' && customerId && <BottomNavBar currentFilter={listFilter} setFilter={setListFilter} onLogout={() => { setCustomerId(null); setCustomerData(null); setPage('customerSelection'); }} />}
         </div>
     );
 }
@@ -986,3 +986,4 @@ function AdminStoreEditScreen({ store, navigateTo }) {
     );
 }
 export default App;
+
