@@ -159,7 +159,7 @@ function App() {
         switch (page) {
             case 'login': return <LoginScreen setError={setError} error={error} />;
             case 'sharedList': return <SharedListScreen shareId={shareId} />;
-            case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} isAdmin={isAdmin} navigateTo={navigateTo} />;
+            case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} navigateTo={navigateTo} />;
             case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} isAdmin={isAdmin} />;
             case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} isAdmin={isAdmin} getCustomerCollectionPath={getCustomerCollectionPath} />;
@@ -211,7 +211,7 @@ function LoginScreen({ setError, error }) {
     );
 }
 
-function CustomerSelectionScreen({ onSelect, onCreate, onViewAsGuest, error, today, handleLogout, isAdmin, navigateTo }) {
+function CustomerSelectionScreen({ onSelect, onCreate, onViewAsGuest, error, today, handleLogout, navigateTo }) {
     const [inputId, setInputId] = useState('');
     return (
         <div className="flex flex-col justify-center items-center h-screen p-6 bg-gray-900">
@@ -491,10 +491,22 @@ function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }
     }, [isAdmin, getCustomerCollectionPath]);
 
     const copyToClipboard = (text) => {
-        navigator.clipboard.writeText(text).then(() => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed"; 
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try { 
+            document.execCommand('copy'); 
             setToast('IDをコピーしました！');
-            setTimeout(() => setToast(''), 2000);
-        });
+            setTimeout(() => setToast(''), 2000); 
+        } catch (err) { 
+            console.error('Failed to copy: ', err); 
+            setToast('コピーに失敗しました。');
+            setTimeout(() => setToast(''), 2000); 
+        }
+        document.body.removeChild(textArea);
     };
 
     const handleDeleteCustomer = async () => {
@@ -606,10 +618,14 @@ function AdminCustomerDetailScreen({ customerInfo, navigateTo }) {
                 visitedStoreIds: visitedStoreIds,
             });
             const shareUrl = `${window.location.origin}?shareId=${docRef.id}`;
-            navigator.clipboard.writeText(shareUrl).then(() => {
-                setToast('共有リンクをコピーしました！');
-                setTimeout(() => setToast(''), 3000);
-            });
+            const textArea = document.createElement("textarea");
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            setToast('共有リンクをコピーしました！');
+            setTimeout(() => setToast(''), 3000);
         } catch (error) {
             console.error("Error creating share link: ", error);
             setToast('共有リンクの作成に失敗しました。');
@@ -802,7 +818,7 @@ function AdminStoreEditScreen({ store, navigateTo }) {
 
     const handleIdChange = (id) => {
         setFormData(prev => {
-            const newIds = prev.requiredIds.includes(id) ? prev.requiredIds.filter(i => i !== id) : [...prev.requiredIds, id];
+            const newIds = prev.requiredIds.includes(id) ? prev.filter(i => i !== id) : [...prev.requiredIds, id];
             return { ...prev, requiredIds: newIds };
         });
     };
