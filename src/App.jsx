@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getApps, initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc, collectionGroup } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, getDocs, writeBatch, deleteDoc, collectionGroup, where } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // --- Icon Components (変更なし) ---
@@ -19,7 +19,6 @@ const Trash2 = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" h
 const Share2 = (props) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>);
 const Ban = (props) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>);
 
-
 // --- Firebase Setup ---
 const firebaseConfig = {
     apiKey: "AIzaSyBDXaOWBwJ2-go5e7wGV-ovD4S3Et-E2GY",
@@ -36,7 +35,6 @@ const auth = getAuth(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const storeCollectionPath = `artifacts/${appId}/public/data/stores`;
 const sharedListsCollectionPath = `artifacts/${appId}/public/data/sharedLists`;
-
 
 // --- Constant Data ---
 const idTypes = ["運転免許証", "マイナンバー", "パスポート", "保険証", "キャッシュカード", "クレジットカード"];
@@ -235,11 +233,7 @@ function CustomerSelectionScreen({ onSelect, onCreate, onViewAsGuest, error, tod
         </div>
     );
 }
-
-// ... (StoreListScreen and other components remain largely the same, but ensure they receive props correctly)
 function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo, listFilter, today, getCustomerCollectionPath }) {
-    // This component's logic remains the same.
-    // Make sure it uses getCustomerCollectionPath when updating Firestore data.
     const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, storeId: null });
     const [idFilterModalOpen, setIdFilterModalOpen] = useState(false);
     const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
@@ -425,54 +419,52 @@ function StoreListScreen({ customerData, setCustomerData, customerId, navigateTo
     );
 }
 
-function SharedListScreen({ shareId }) {
-    const [sharedData, setSharedData] = useState(null);
-    const [stores, setStores] = useState([]);
-    const [loading, setLoading] = useState(true);
+function StoreDetailScreen({ store, onClose }) {
+    const [showPasswordInput, setShowPasswordInput] = useState(false);
+    const [password, setPassword] = useState('');
+    const [memo, setMemo] = useState('');
+    const [memoUnlocked, setMemoUnlocked] = useState(false);
+    const [modalMessage, setModalMessage] = useState('');
 
-    useEffect(() => {
-        const fetchSharedData = async () => {
-            try {
-                const docRef = doc(db, sharedListsCollectionPath, shareId);
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setSharedData(data);
-                    
-                    if (data.visitedStoreIds && data.visitedStoreIds.length > 0) {
-                        const storesData = [];
-                        // Use a single query with 'in' operator for efficiency
-                        const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', data.visitedStoreIds));
-                        const querySnapshot = await getDocs(storesQuery);
-                        querySnapshot.forEach((doc) => {
-                            storesData.push({ id: doc.id, ...doc.data() });
-                        });
-                        setStores(storesData);
-                    }
-                }
-            } catch (error) {
-                console.error("Error fetching shared list:", error);
-            }
-            setLoading(false);
-        };
-        fetchSharedData();
-    }, [shareId]);
-
-    if (loading) return <div className="text-center p-10">読み込み中...</div>;
-    if (!sharedData) return <div className="text-center p-10">共有リストが見つかりません。</div>;
+    const handlePasswordCheck = () => {
+        if (password === '1234') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
+        else { setModalMessage('パスワードが違います'); }
+    };
 
     return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 overflow-y-auto max-h-full" onClick={(e) => e.stopPropagation()}>
+                {modalMessage && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setModalMessage('')}><div className="bg-gray-800 p-6 rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}><p className="text-white">{modalMessage}</p><button onClick={() => setModalMessage('')} className="mt-4 w-full bg-pink-600 text-white py-2 rounded-lg">閉じる</button></div></div>)}
+                <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
+                <main className="space-y-6">
+                    <div className="bg-gray-700 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>定休日:</strong> {store.closingDay}</li><li><strong>初回時間:</strong> {store.initialTime}分</li><li><strong>初回料金:</strong> {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>遅い時間帯可:</strong> {store.lateNightOption}</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>タグ:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-600 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
+                    <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
+                    <div className="bg-gray-700 p-4 rounded-lg">{!memoUnlocked && (<button onClick={() => setShowPasswordInput(!showPasswordInput)} className="w-full text-center text-pink-400 font-bold py-2">スタッフ専用メモを見る</button>)}{showPasswordInput && (<div className="mt-4"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white" maxLength="4" /><button onClick={handlePasswordCheck} className="w-full mt-2 bg-pink-600 text-white font-bold py-2 rounded-lg">確認</button></div>)}{memoUnlocked && (<div><h3 className="font-bold text-lg mb-2">スタッフ専用メモ</h3><p className="text-gray-300 whitespace-pre-wrap bg-gray-600 p-3 rounded">{memo}</p><p><strong>バック料金:</strong> {store.backCharge}</p></div>)}</div>
+                </main>
+            </div>
+        </div>
+    );
+}
+
+function AdminScreen({ navigateTo }) {
+    return (
         <div className="p-4">
-            <h1 className="text-2xl font-bold text-center mb-6">{sharedData.nickname}さんの行ったお店リスト</h1>
-            <div className="space-y-3">
-                {stores.map(store => (
-                    <div key={store.id} className="bg-gray-800 rounded-lg p-4">
-                        <h2 className="text-lg font-bold">{store.name}</h2>
-                        <p className="text-sm text-gray-400">{store.group}</p>
-                        <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
-                    </div>
-                ))}
+            <button onClick={() => navigateTo('customerSelection')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />トップに戻る</button>
+            <h1 className="text-2xl font-bold text-center mb-6">管理者メニュー</h1>
+            <div className="space-y-4">
+                <button onClick={() => navigateTo('adminStores')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
+                    <h2 className="text-lg font-bold">店舗情報管理</h2>
+                    <p className="text-sm text-gray-400">店舗の追加、編集を行います</p>
+                </button>
+                 <button onClick={() => navigateTo('adminCustomers')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
+                    <h2 className="text-lg font-bold">顧客管理</h2>
+                    <p className="text-sm text-gray-400">顧客のメモや利用状況を確認します</p>
+                </button>
+                <button onClick={() => navigateTo('adminStaffManagement')} className="w-full p-4 bg-gray-800 rounded-lg text-left hover:bg-gray-700">
+                    <h2 className="text-lg font-bold">スタッフ管理</h2>
+                    <p className="text-sm text-gray-400">新規スタッフの登録を行います</p>
+                </button>
             </div>
         </div>
     );
@@ -717,7 +709,7 @@ function AdminStaffManagementScreen({ navigateTo }) {
 
     const handleRegister = async () => {
         setError(''); setSuccess('');
-        // IMPORTANT: Replace 'MASTER_PASSWORD' with a secure, actual master password,
+        // IMPORTANT: Replace '1234' with a secure, actual master password,
         // ideally fetched from a secure configuration.
         if (masterPassword !== '1234') { 
             setError('マスターパスワードが正しくありません。');
@@ -748,9 +740,7 @@ function AdminStaffManagementScreen({ navigateTo }) {
         </div>
     );
 }
-
-// ... (Other components like AdminStoreEditScreen and modals are unchanged and thus omitted for brevity)
-
+// ... (The rest of the components: AdminStoresScreen, AdminStoreEditScreen, BottomNavBar, and all Modals remain unchanged and are omitted for brevity)
 // --- Modals and Bottom Nav ---
 function BottomNavBar({ currentFilter, setFilter, onLogout }) {
     return (
@@ -786,24 +776,6 @@ function IdSelectionModal({ currentSelected, onClose, onApply }) {
                 <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">身分証を選択</h3></div>
                 <div className="p-2 space-y-1">{idTypes.map(type => (<label key={type} className="flex items-center gap-3 p-3 hover:bg-gray-700 rounded-md cursor-pointer"><input type="checkbox" checked={selected.includes(type)} onChange={() => toggleId(type)} className="form-checkbox h-5 w-5 bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/><span>{type}</span></label>))}</div>
                 <div className="p-2"><button onClick={() => { onApply(selected); onClose(); }} className="w-full bg-pink-600 text-white font-bold py-2 rounded-lg">適用</button></div>
-            </div>
-        </div>
-    );
-}
-function AdminLoginModal({ onClose, onLoginSuccess }) {
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const handleLogin = () => {
-        if (password === '1234') { onLoginSuccess(); } 
-        else { setError('パスワードが違います'); setPassword(''); }
-    };
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-6" onClick={(e) => e.stopPropagation()}>
-                <h3 className="font-bold text-lg text-center mb-4">管理者パスワード</h3>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="4桁のパスワード" maxLength="4" className="w-full text-center tracking-widest px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
-                {error && <p className="text-red-500 text-sm text-center mt-2">{error}</p>}
-                <button onClick={handleLogin} className="w-full mt-4 bg-pink-600 text-white font-bold py-2 rounded-lg">ログイン</button>
             </div>
         </div>
     );
@@ -864,7 +836,6 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
         </div>
     );
 }
-// AdminStoreEditScreen remains unchanged
 function AdminStoreEditScreen({ store, navigateTo }) {
     const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialTime: '', closingDay: '', lateNightOption: '不可', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
     const [hasPriceRange, setHasPriceRange] = useState(false);
