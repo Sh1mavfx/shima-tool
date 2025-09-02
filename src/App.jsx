@@ -182,7 +182,7 @@ function App() {
             <div className="container mx-auto max-w-lg p-0">
                 {renderPage()}
             </div>
-            {page === 'list' && customerId && <BottomNavBar currentFilter={listFilter} setFilter={setListFilter} onLogout={() => { setCustomerId(null); setCustomerData(null); setPage('customerSelection'); }} />}
+            {page === 'list' && <BottomNavBar currentFilter={listFilter} setFilter={setListFilter} onLogout={() => { setCustomerId(null); setCustomerData(null); setPage('customerSelection'); }} />}
         </div>
     );
 }
@@ -253,7 +253,6 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
     const [allStores, setAllStores] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStore, setSelectedStore] = useState(null);
-    const [storeToStop, setStoreToStop] = useState(null);
     const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, storeId: null });
 
     useEffect(() => {
@@ -277,28 +276,6 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
             await updateDoc(customerRef, { storeStatuses: newStoreStatuses });
         } catch (e) { console.error("Error updating store status: ", e); }
     };
-
-    const handleToggleStopStore = async (storeId) => {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        
-        if (customerId) {
-            const customerPath = getCustomerCollectionPath();
-            const currentStopped = customerData.stoppedStores?.filter(s => s.date === todayStr) || [];
-            let newStoppedStores;
-            if (currentStopped.some(s => s.storeId === storeId)) {
-                newStoppedStores = currentStopped.filter(s => s.storeId !== storeId);
-            } else {
-                newStoppedStores = [...currentStopped, { storeId, date: todayStr }];
-            }
-            const updatedCustomerData = { ...customerData, stoppedStores: newStoppedStores };
-            setCustomerData(updatedCustomerData);
-            try {
-                const customerRef = doc(db, customerPath, customerId);
-                await updateDoc(customerRef, { stoppedStores: newStoppedStores });
-            } catch (e) { console.error("Error stopping store: ", e); }
-        }
-        setStoreToStop(null);
-    };
     
     const combinedStores = useMemo(() => {
         if (!allStores.length) return [];
@@ -311,10 +288,6 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
 
     const filteredStores = useMemo(() => {
         let stores = [...combinedStores];
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const stoppedToday = customerId ? customerData?.stoppedStores?.filter(s => s.date === todayStr).map(s => s.storeId) || [] : [];
-
-        stores = stores.filter(s => !stoppedToday.includes(s.id));
 
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
@@ -362,7 +335,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
     return (
         <div className="pb-28">
             <header className="p-4 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-10">
-                 {!customerId && <button onClick={() => navigateTo('customerSelection')} className="absolute top-4 left-4 text-pink-400"><ArrowLeft /> 顧客選択に戻る</button>}
+                 {!customerId && <button onClick={() => navigateTo('customerSelection')} className="absolute top-4 left-4 text-pink-400 flex items-center gap-2"><ArrowLeft /> 戻る</button>}
                 <h1 className="text-2xl font-bold text-center mb-4">{listFilter === 'visited' ? '行ったことある店' : `${customerData?.nickname || '店舗'}リスト`}</h1>
                 <div className="mb-4">
                     <input type="text" placeholder="店名、グループ、タグ、読み仮名で検索..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-full text-white placeholder-gray-500"/>
@@ -391,7 +364,6 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
                         </div>
                         { customerId &&
                             <div className="flex items-center">
-                                <button onClick={() => setStoreToStop(store)} className="mr-2 bg-yellow-600 text-white rounded-full p-2 hover:bg-yellow-700"><Ban className="w-5 h-5" /></button>
                                 <button onClick={() => { setStatusUpdateModal({ isOpen: true, storeId: store.id }) }} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500"><X className="w-5 h-5" /></button>
                             </div>
                         }
@@ -405,7 +377,6 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
             {groupFilterModalOpen && <GroupSelectionModal groups={allGroups} onClose={() => setGroupFilterModalOpen(false)} onSelect={(group) => { setSelectedGroup(group); setGroupFilterModalOpen(false); }} />}
             {priceFilterModalOpen && <PriceSelectionModal onClose={() => setPriceFilterModalOpen(false)} onSelect={(range) => { setSelectedPriceRange(range); setPriceFilterModalOpen(false); }} />}
             {numberOfPeopleModalOpen && <NumberOfPeopleSelectionModal onClose={() => setNumberOfPeopleModalOpen(false)} onSelect={(option) => { setSelectedNumberOfPeople(option); setNumberOfPeopleModalOpen(false); }} />}
-            {storeToStop && <ConfirmationModal isOpen={!!storeToStop} onClose={() => setStoreToStop(null)} onConfirm={() => handleToggleStopStore(storeToStop.id)} title="終日ストップ" message={`「${storeToStop.name}」を終日ストップしますか？`} />}
         </div>
     );
 }
@@ -463,7 +434,7 @@ function AdminScreen({ navigateTo, isAdmin }) {
     );
 }
 
-function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }) {
+function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath }) {
     const [customers, setCustomers] = useState([]);
     const [toast, setToast] = useState('');
     const [customerToDelete, setCustomerToDelete] = useState(null);
@@ -473,16 +444,9 @@ function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }
         const fetchCustomers = async () => {
             setLoading(true);
             try {
-                let customersQuery;
-                if(isAdmin){
-                    customersQuery = query(collectionGroup(db, 'customers'));
-                } else {
-                    const customerPath = getCustomerCollectionPath();
-                    if(customerPath) {
-                        customersQuery = query(collection(db, customerPath));
-                    }
-                }
-                if(customersQuery){
+                const customerPath = getCustomerCollectionPath();
+                if(customerPath) {
+                    const customersQuery = query(collection(db, customerPath));
                     const querySnapshot = await getDocs(customersQuery);
                     const customersList = querySnapshot.docs.map(doc => ({
                         id: doc.id,
@@ -495,7 +459,7 @@ function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }
             setLoading(false);
         };
         fetchCustomers();
-    }, [isAdmin, getCustomerCollectionPath]);
+    }, [getCustomerCollectionPath]);
 
     const copyToClipboard = (text) => {
         const textArea = document.createElement("textarea");
@@ -529,7 +493,7 @@ function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }
         }
     };
 
-    if (loading) return <div className="text-center p-10">顧客情報を読み込み中...</div>
+    if (loading) return <div className="text-center p-10">顧客情報を読み込み中...</div>;
 
     return (
         <div className="p-4">
