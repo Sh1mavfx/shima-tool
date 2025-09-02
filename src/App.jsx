@@ -549,7 +549,6 @@ function AdminCustomersScreen({ navigateTo }) {
         </div>
     );
 }
-
 function AdminCustomerDetailScreen({ customerInfo, navigateTo }) {
     const [customer, setCustomer] = useState(null);
     const [allStores, setAllStores] = useState([]);
@@ -986,5 +985,4 @@ function AdminStoreEditScreen({ store, navigateTo }) {
         </div>
     );
 }
-
 export default App;
