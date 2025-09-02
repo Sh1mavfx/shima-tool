@@ -214,7 +214,7 @@ function LoginScreen({ setError, error }) {
 function CustomerSelectionScreen({ onSelect, onCreate, onViewAsGuest, error, today, handleLogout, navigateTo }) {
     const [inputId, setInputId] = useState('');
     return (
-        <div className="flex flex-col justify-center items-center h-screen p-6 bg-gray-900">
+        <div className="flex flex-col justify-center items-center h-screen p-6 pb-24">
             <div className="absolute top-5 bg-blue-500 text-white text-center p-2 rounded-lg">本日は{today}です</div>
             <h1 className="text-4xl font-bold text-pink-400 mb-2">Host-Manager</h1>
             <p className="text-gray-400 mb-8">顧客IDを入力または新規作成してください</p>
@@ -224,7 +224,7 @@ function CustomerSelectionScreen({ onSelect, onCreate, onViewAsGuest, error, tod
             </div>
             <div className="my-6 text-gray-500">または</div>
             <button onClick={onCreate} className="w-full max-w-sm bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg">新規顧客IDを発行</button>
-            <button onClick={onViewAsGuest} className="w-full max-w-sm mt-4 border-2 border-pink-500 text-pink-500 font-bold py-3 px-4 rounded-lg">店舗一覧を見る (ゲスト)</button>
+            <button onClick={onViewAsGuest} className="w-full max-w-sm mt-4 border-2 border-pink-500 text-pink-500 font-bold py-3 px-4 rounded-lg">店舗一覧を見る</button>
             {error && <p className="text-red-500 mt-4">{error}</p>}
             <div className="absolute bottom-6 right-6 flex items-center gap-4">
                  <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-gray-400 hover:text-pink-400"><Shield className="w-5 h-5" />管理者</button>
