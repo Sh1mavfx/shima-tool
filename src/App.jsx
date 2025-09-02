@@ -725,7 +725,7 @@ function AdminStaffManagementScreen({ navigateTo }) {
 
     const handleRegister = async () => {
         setError(''); setSuccess('');
-        if (masterPassword !== '1234') { // IMPORTANT: Replace with a secure master password
+        if (masterPassword !== 'White1221') { // IMPORTANT: Replace with a secure master password
             setError('マスターパスワードが正しくありません。');
             return;
         }
