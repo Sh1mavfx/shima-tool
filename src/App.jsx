@@ -40,6 +40,7 @@ const auth = getAuth(app);
 const appId = (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id').replace(/\//g, '_');
 const storeCollectionPath = `artifacts/${appId}/public/data/stores`;
 const sharedListsCollectionPath = `artifacts/${appId}/public/data/sharedLists`;
+const staffsCollectionPath = `artifacts/${appId}/public/data/staffs`;
 
 // --- Constant Data ---
 const idTypes = ["運転免許証", "マイナンバー", "パスポート", "保険証", "キャッシュカード", "クレジットカード"];
@@ -167,7 +168,7 @@ function App() {
             case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} navigateTo={navigateTo} />;
             case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} navigateTo={navigateTo} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} isAdmin={isAdmin} />;
-            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} getCustomerCollectionPath={getCustomerCollectionPath} />;
+            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} isAdmin={isAdmin} getCustomerCollectionPath={getCustomerCollectionPath} />;
             case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerInfo={selectedAdminCustomer} navigateTo={navigateTo} />;
             case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
             case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
@@ -472,9 +473,16 @@ function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }
         const fetchCustomers = async () => {
             setLoading(true);
             try {
-                const customerPath = getCustomerCollectionPath();
-                if(customerPath) {
-                    const customersQuery = query(collection(db, customerPath));
+                let customersQuery;
+                if(isAdmin){
+                    customersQuery = query(collectionGroup(db, 'customers'));
+                } else {
+                    const customerPath = getCustomerCollectionPath();
+                    if(customerPath) {
+                        customersQuery = query(collection(db, customerPath));
+                    }
+                }
+                if(customersQuery){
                     const querySnapshot = await getDocs(customersQuery);
                     const customersList = querySnapshot.docs.map(doc => ({
                         id: doc.id,
@@ -487,7 +495,7 @@ function AdminCustomersScreen({ navigateTo, isAdmin, getCustomerCollectionPath }
             setLoading(false);
         };
         fetchCustomers();
-    }, [getCustomerCollectionPath]);
+    }, [isAdmin, getCustomerCollectionPath]);
 
     const copyToClipboard = (text) => {
         const textArea = document.createElement("textarea");
@@ -717,16 +725,18 @@ function AdminStaffManagementScreen({ navigateTo }) {
     const [success, setSuccess] = useState('');
     const [staffList, setStaffList] = useState([]);
 
+    const fetchStaff = async () => {
+        try {
+            const querySnapshot = await getDocs(collection(db, staffsCollectionPath));
+            const staff = querySnapshot.docs.map(doc => doc.data());
+            setStaffList(staff);
+        } catch (err) {
+            console.error("Error fetching staff list:", err);
+        }
+    };
+
     useEffect(() => {
-        // This is a simplified, client-side way to list users.
-        // For production apps, you should manage this list via a secure backend.
-        const listAllUsers = async () => {
-             // In a real app, this would be a call to a Cloud Function that uses the Admin SDK.
-             // As we cannot use the Admin SDK on the client, we'll simulate this with a placeholder.
-             // This is NOT secure for production.
-             setStaffList([]); // Cannot fetch all users from the client SDK directly for security reasons.
-        };
-        listAllUsers();
+        fetchStaff();
     }, []);
 
 
@@ -737,9 +747,18 @@ function AdminStaffManagementScreen({ navigateTo }) {
             return;
         }
         try {
-            await createUserWithEmailAndPassword(auth, email, password);
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            await setDoc(doc(db, staffsCollectionPath, user.uid), {
+                email: user.email,
+                uid: user.uid,
+                createdAt: new Date(),
+            });
+
             setSuccess('新しいスタッフを登録しました。');
             setEmail(''); setPassword(''); setMasterPassword('');
+            fetchStaff();
         } catch (e) {
             setError('スタッフの登録に失敗しました。' + e.message);
             console.error(e);
@@ -761,12 +780,11 @@ function AdminStaffManagementScreen({ navigateTo }) {
              <div className="mt-8">
                 <h2 className="text-xl font-bold text-center mb-4">既存スタッフ一覧</h2>
                 <div className="bg-gray-800 p-4 rounded-lg space-y-2">
-                    <p className="text-gray-400 text-sm">（注：セキュリティの都合上、全ユーザーの一覧表示はサーバーサイドの実装が必要です）</p>
-                    {/* {staffList.map(staff => (
+                    {staffList.map(staff => (
                         <div key={staff.uid} className="p-2 bg-gray-700 rounded">
                             <p>{staff.email}</p>
                         </div>
-                    ))} */}
+                    ))}
                 </div>
             </div>
         </div>
