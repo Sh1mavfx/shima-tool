@@ -88,7 +88,6 @@ function App() {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
             if (user) {
-                // Simplified admin check using a hardcoded UID list
                 setIsAdmin(ADMIN_UIDS.includes(user.uid)); 
                 
                 if (!shareId) setPage('customerSelection');
@@ -166,7 +165,7 @@ function App() {
             case 'login': return <LoginScreen setError={setError} error={error} />;
             case 'sharedList': return <SharedListScreen shareId={shareId} />;
             case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} navigateTo={navigateTo} />;
-            case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} />;
+            case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} navigateTo={navigateTo} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} isAdmin={isAdmin} />;
             case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} isAdmin={isAdmin} getCustomerCollectionPath={getCustomerCollectionPath} />;
             case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerInfo={selectedAdminCustomer} navigateTo={navigateTo} />;
@@ -239,7 +238,7 @@ function CustomerSelectionScreen({ onSelect, onCreate, onViewAsGuest, error, tod
         </div>
     );
 }
-function StoreListScreen({ customerData, setCustomerData, customerId, listFilter, setListFilter, today, getCustomerCollectionPath }) {
+function StoreListScreen({ customerData, setCustomerData, customerId, listFilter, setListFilter, today, getCustomerCollectionPath, navigateTo }) {
     const [idFilterModalOpen, setIdFilterModalOpen] = useState(false);
     const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
     const [priceFilterModalOpen, setPriceFilterModalOpen] = useState(false);
@@ -362,6 +361,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
     return (
         <div className="pb-28">
             <header className="p-4 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-10">
+                 {!customerId && <button onClick={() => navigateTo('customerSelection')} className="absolute top-4 left-4 text-pink-400"><ArrowLeft /> 顧客選択に戻る</button>}
                 <h1 className="text-2xl font-bold text-center mb-4">{listFilter === 'visited' ? '行ったことある店' : `${customerData?.nickname || '店舗'}リスト`}</h1>
                 <div className="mb-4">
                     <input type="text" placeholder="店名、グループ、タグ、読み仮名で検索..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-full text-white placeholder-gray-500"/>
@@ -417,7 +417,7 @@ function StoreDetailScreen({ store, onClose }) {
     const [modalMessage, setModalMessage] = useState('');
 
     const handlePasswordCheck = () => {
-        if (password === '1234') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
+        if (password === 'White1221') { setMemo(store.staffMemo); setMemoUnlocked(true); setShowPasswordInput(false); } 
         else { setModalMessage('パスワードが違います'); }
     };
 
@@ -722,10 +722,24 @@ function AdminStaffManagementScreen({ navigateTo }) {
     const [masterPassword, setMasterPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [staffList, setStaffList] = useState([]);
+
+    useEffect(() => {
+        // This is a simplified, client-side way to list users.
+        // For production apps, you should manage this list via a secure backend.
+        const listAllUsers = async () => {
+             // In a real app, this would be a call to a Cloud Function that uses the Admin SDK.
+             // As we cannot use the Admin SDK on the client, we'll simulate this with a placeholder.
+             // This is NOT secure for production.
+             setStaffList([]); // Cannot fetch all users from the client SDK directly for security reasons.
+        };
+        listAllUsers();
+    }, []);
+
 
     const handleRegister = async () => {
         setError(''); setSuccess('');
-        if (masterPassword !== 'White1221') { // IMPORTANT: Replace with a secure master password
+        if (masterPassword !== 'White1221') {
             setError('マスターパスワードが正しくありません。');
             return;
         }
@@ -743,13 +757,24 @@ function AdminStaffManagementScreen({ navigateTo }) {
         <div className="p-4">
             <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />管理メニューに戻る</button>
             <h1 className="text-2xl font-bold text-center mb-6">新規スタッフ登録</h1>
-            <div className="space-y-4">
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" className="w-full p-2 bg-gray-800 rounded-md" />
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" className="w-full p-2 bg-gray-800 rounded-md" />
-                <input type="password" value={masterPassword} onChange={(e) => setMasterPassword(e.target.value)} placeholder="マスターパスワード" className="w-full p-2 bg-gray-800 rounded-md" />
+            <div className="space-y-4 bg-gray-800 p-4 rounded-lg">
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" className="w-full p-2 bg-gray-700 rounded-md" />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" className="w-full p-2 bg-gray-700 rounded-md" />
+                <input type="password" value={masterPassword} onChange={(e) => setMasterPassword(e.target.value)} placeholder="マスターパスワード" className="w-full p-2 bg-gray-700 rounded-md" />
                 <button onClick={handleRegister} className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg">登録する</button>
                 {error && <p className="text-red-500 text-center">{error}</p>}
                 {success && <p className="text-green-500 text-center">{success}</p>}
+            </div>
+             <div className="mt-8">
+                <h2 className="text-xl font-bold text-center mb-4">既存スタッフ一覧</h2>
+                <div className="bg-gray-800 p-4 rounded-lg space-y-2">
+                    <p className="text-gray-400 text-sm">（注：セキュリティの都合上、全ユーザーの一覧表示はサーバーサイドの実装が必要です）</p>
+                    {/* {staffList.map(staff => (
+                        <div key={staff.uid} className="p-2 bg-gray-700 rounded">
+                            <p>{staff.email}</p>
+                        </div>
+                    ))} */}
+                </div>
             </div>
         </div>
     );
