@@ -588,7 +588,7 @@ function AdminCustomerDetailScreen({ customerInfo, navigateTo }) {
                 nickname: customer.nickname,
                 visitedStoreIds: visitedStoreIds,
             });
-            const shareUrl = `${window.location.origin}?shareId=${docRef.id}`;
+            const shareUrl = `${window.location.href.split('?')[0]}?shareId=${docRef.id}`;
             const textArea = document.createElement("textarea");
             textArea.value = shareUrl;
             document.body.appendChild(textArea);
