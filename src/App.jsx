@@ -73,6 +73,7 @@ function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [shareId, setShareId] = useState(null);
+    const [shareModalData, setShareModalData] = useState({ isOpen: false, url: '' });
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -168,8 +169,8 @@ function App() {
             case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} navigateTo={navigateTo} />;
             case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} navigateTo={navigateTo} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} isAdmin={isAdmin} />;
-            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} getCustomerCollectionPath={getCustomerCollectionPath} />;
-            case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerInfo={selectedAdminCustomer} navigateTo={navigateTo} />;
+            case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} getCustomerCollectionPath={getCustomerCollectionPath} setShareModalData={setShareModalData} />;
+            case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerInfo={selectedAdminCustomer} navigateTo={navigateTo} setShareModalData={setShareModalData}/>;
             case 'adminStores': return <AdminStoresScreen navigateTo={navigateTo} />;
             case 'adminStoreEdit': return <AdminStoreEditScreen store={editingStore} navigateTo={navigateTo} />;
             case 'adminStaffManagement': return <AdminStaffManagementScreen navigateTo={navigateTo} />;
@@ -181,6 +182,7 @@ function App() {
         <div className="bg-gray-900 text-white min-h-screen font-sans">
             <div className="container mx-auto max-w-lg p-0">
                 {renderPage()}
+                {shareModalData.isOpen && <ShareModal url={shareModalData.url} onClose={() => setShareModalData({ isOpen: false, url: ''})} />}
             </div>
             {page === 'list' && <BottomNavBar currentFilter={listFilter} setFilter={setListFilter} onLogout={() => { setCustomerId(null); setCustomerData(null); setPage('customerSelection'); }} />}
         </div>
@@ -493,7 +495,7 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath }) {
         }
     };
 
-    if (loading) return <div className="text-center p-10">顧客情報を読み込み中...</div>
+    if (loading) return <div className="text-center p-10">顧客情報を読み込み中...</div>;
 
     return (
         <div className="p-4">
@@ -527,7 +529,7 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath }) {
         </div>
     );
 }
-function AdminCustomerDetailScreen({ customerInfo, navigateTo }) {
+function AdminCustomerDetailScreen({ customerInfo, navigateTo, setShareModalData }) {
     const [customer, setCustomer] = useState(null);
     const [allStores, setAllStores] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -588,17 +590,10 @@ function AdminCustomerDetailScreen({ customerInfo, navigateTo }) {
                 nickname: customer.nickname,
                 visitedStoreIds: visitedStoreIds,
             });
-            const shareUrl = `${window.location.href.split('?')[0]}?shareId=${docRef.id}`;
-            const textArea = document.createElement("textarea");
-            textArea.value = shareUrl;
-            textArea.style.position = "fixed"; 
-            textArea.style.left = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            setToast('共有リンクをコピーしました！');
-            setTimeout(() => setToast(''), 3000);
+            const baseUrl = window.location.href.split('?')[0];
+            const shareUrl = `${baseUrl}?shareId=${docRef.id}`;
+            setShareModalData({ isOpen: true, url: shareUrl });
+
         } catch (error) {
             console.error("Error creating share link: ", error);
             setToast('共有リンクの作成に失敗しました。');
@@ -1085,6 +1080,40 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
                     <button onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">キャンセル</button>
                     <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">OK</button>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function ShareModal({ url, onClose }) {
+    const [copySuccess, setCopySuccess] = useState('');
+
+    const copyToClipboard = () => {
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        textArea.style.position = "fixed"; 
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            setCopySuccess('コピーしました！');
+        } catch (err) {
+            setCopySuccess('コピーに失敗しました。');
+        }
+        document.body.removeChild(textArea);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="font-bold text-lg text-center mb-4">共有リンク</h3>
+                <div className="flex items-center space-x-2">
+                    <input type="text" value={url} readOnly className="w-full p-2 bg-gray-700 rounded-md text-white border border-gray-600" />
+                    <button onClick={copyToClipboard} className="p-2 bg-pink-600 rounded-md hover:bg-pink-700"><Clipboard className="w-5 h-5"/></button>
+                </div>
+                {copySuccess && <p className="text-center text-green-400 mt-2">{copySuccess}</p>}
+                <button onClick={onClose} className="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">閉じる</button>
             </div>
         </div>
     );
