@@ -108,7 +108,6 @@ function App() {
 
     const getCustomerCollectionPath = () => {
         if (!currentUser) return null;
-        // CORRECTED PATH: Use /users/ instead of /staffs/ to align with platform security rules
         return `artifacts/${appId}/users/${currentUser.uid}/customers`;
     };
 
@@ -704,9 +703,7 @@ function AdminStaffManagementScreen({ navigateTo }) {
 
     const handleRegister = async () => {
         setError(''); setSuccess('');
-        // IMPORTANT: Replace '1234' with a secure, actual master password,
-        // ideally fetched from a secure configuration.
-        if (masterPassword !== '1234') { 
+        if (masterPassword !== '1234') { // IMPORTANT: Replace with a secure master password
             setError('マスターパスワードが正しくありません。');
             return;
         }
@@ -735,102 +732,7 @@ function AdminStaffManagementScreen({ navigateTo }) {
         </div>
     );
 }
-// ... (The rest of the components: AdminStoresScreen, AdminStoreEditScreen, BottomNavBar, and all Modals remain unchanged and are omitted for brevity)
-// --- Modals and Bottom Nav ---
-function BottomNavBar({ currentFilter, setFilter, onLogout }) {
-    return (
-        <nav className="fixed bottom-0 left-0 right-0 bg-gray-800 max-w-lg mx-auto h-20 flex items-center justify-around px-4">
-            <button onClick={() => setFilter('visited')} className={`flex flex-col items-center justify-center w-24 h-full ${currentFilter === 'visited' ? 'text-pink-400' : 'text-gray-400'}`}><CheckSquare className="w-7 h-7 mb-1" /><span className="text-xs">行った店</span></button>
-            <button onClick={() => setFilter('all')} className={`flex items-center justify-center w-20 h-20 -mt-8 rounded-full shadow-lg ${currentFilter === 'all' ? 'bg-pink-600' : 'bg-gray-700'}`}><Home className="w-9 h-9 text-white" /></button>
-            <button onClick={onLogout} className="flex flex-col items-center justify-center w-24 h-full text-gray-400"><ArrowLeft className="w-7 h-7 mb-1" /><span className="text-xs">顧客選択へ</span></button>
-        </nav>
-    );
-}
-function StatusUpdateModal({ onClose, onUpdate }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">ステータスを選択</h3></div>
-                <div className="flex flex-col p-2">
-                    <button onClick={() => onUpdate('visited')} className="w-full text-left p-3 text-lg text-green-400 hover:bg-gray-700 rounded-md">✅ 行ったことある</button>
-                    <button onClick={() => onUpdate('unwanted')} className="w-full text-left p-3 text-lg text-red-400 hover:bg-gray-700 rounded-md">🚫 行きたくない</button>
-                    <button onClick={onClose} className="w-full text-left p-3 text-lg text-gray-400 hover:bg-gray-700 rounded-md">❌ キャンセル</button>
-                </div>
-            </div>
-        </div>
-    );
-}
-function IdSelectionModal({ currentSelected, onClose, onApply }) {
-    const [selected, setSelected] = useState(currentSelected);
-    const toggleId = (id) => {
-        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    };
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">身分証を選択</h3></div>
-                <div className="p-2 space-y-1">{idTypes.map(type => (<label key={type} className="flex items-center gap-3 p-3 hover:bg-gray-700 rounded-md cursor-pointer"><input type="checkbox" checked={selected.includes(type)} onChange={() => toggleId(type)} className="form-checkbox h-5 w-5 bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/><span>{type}</span></label>))}</div>
-                <div className="p-2"><button onClick={() => { onApply(selected); onClose(); }} className="w-full bg-pink-600 text-white font-bold py-2 rounded-lg">適用</button></div>
-            </div>
-        </div>
-    );
-}
-function GroupSelectionModal({ groups, onClose, onSelect }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">グループを選択</h3></div>
-                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
-                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべてのグループ</button>
-                    {groups.map(group => (<button key={group} onClick={() => onSelect(group)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{group}</button>))}
-                </div>
-            </div>
-        </div>
-    );
-}
-function PriceSelectionModal({ onClose, onSelect }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">料金を選択</h3></div>
-                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
-                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての料金</button>
-                    {priceFilterRanges.map(range => (<button key={range.label} onClick={() => onSelect(range)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{range.label}</button>))}
-                </div>
-            </div>
-        </div>
-    );
-}
 
-function NumberOfPeopleSelectionModal({ onClose, onSelect }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">人数を選択</h3></div>
-                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
-                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての人数</button>
-                    {numberOfPeopleOptions.map(option => (<button key={option.label} onClick={() => onSelect(option)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{option.label}</button>))}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-6" onClick={(e) => e.stopPropagation()}>
-                <h3 className="font-bold text-lg text-center mb-2">{title}</h3>
-                <p className="text-gray-300 text-center mb-6">{message}</p>
-                <div className="flex gap-4">
-                    <button onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">キャンセル</button>
-                    <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">OK</button>
-                </div>
-            </div>
-        </div>
-    );
-}
 function AdminStoresScreen({ navigateTo }) {
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -1016,6 +918,7 @@ function AdminStoreEditScreen({ store, navigateTo }) {
         </div>
     );
 }
+
 function SharedListScreen({ shareId }) {
     const [sharedData, setSharedData] = useState(null);
     const [stores, setStores] = useState([]);
@@ -1033,7 +936,6 @@ function SharedListScreen({ shareId }) {
                     
                     if (data.visitedStoreIds && data.visitedStoreIds.length > 0) {
                         const storesData = [];
-                        // Use a single query with 'in' operator for efficiency
                         const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', data.visitedStoreIds));
                         const querySnapshot = await getDocs(storesQuery);
                         querySnapshot.forEach((doc) => {
@@ -1064,6 +966,101 @@ function SharedListScreen({ shareId }) {
                         <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+}
+// --- Modals and Bottom Nav ---
+function BottomNavBar({ currentFilter, setFilter, onLogout }) {
+    return (
+        <nav className="fixed bottom-0 left-0 right-0 bg-gray-800 max-w-lg mx-auto h-20 flex items-center justify-around px-4">
+            <button onClick={() => setFilter('visited')} className={`flex flex-col items-center justify-center w-24 h-full ${currentFilter === 'visited' ? 'text-pink-400' : 'text-gray-400'}`}><CheckSquare className="w-7 h-7 mb-1" /><span className="text-xs">行った店</span></button>
+            <button onClick={() => setFilter('all')} className={`flex items-center justify-center w-20 h-20 -mt-8 rounded-full shadow-lg ${currentFilter === 'all' ? 'bg-pink-600' : 'bg-gray-700'}`}><Home className="w-9 h-9 text-white" /></button>
+            <button onClick={onLogout} className="flex flex-col items-center justify-center w-24 h-full text-gray-400"><ArrowLeft className="w-7 h-7 mb-1" /><span className="text-xs">顧客選択へ</span></button>
+        </nav>
+    );
+}
+function StatusUpdateModal({ onClose, onUpdate }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">ステータスを選択</h3></div>
+                <div className="flex flex-col p-2">
+                    <button onClick={() => onUpdate('visited')} className="w-full text-left p-3 text-lg text-green-400 hover:bg-gray-700 rounded-md">✅ 行ったことある</button>
+                    <button onClick={() => onUpdate('unwanted')} className="w-full text-left p-3 text-lg text-red-400 hover:bg-gray-700 rounded-md">🚫 行きたくない</button>
+                    <button onClick={onClose} className="w-full text-left p-3 text-lg text-gray-400 hover:bg-gray-700 rounded-md">❌ キャンセル</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+function IdSelectionModal({ currentSelected, onClose, onApply }) {
+    const [selected, setSelected] = useState(currentSelected);
+    const toggleId = (id) => {
+        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">身分証を選択</h3></div>
+                <div className="p-2 space-y-1">{idTypes.map(type => (<label key={type} className="flex items-center gap-3 p-3 hover:bg-gray-700 rounded-md cursor-pointer"><input type="checkbox" checked={selected.includes(type)} onChange={() => toggleId(type)} className="form-checkbox h-5 w-5 bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/><span>{type}</span></label>))}</div>
+                <div className="p-2"><button onClick={() => { onApply(selected); onClose(); }} className="w-full bg-pink-600 text-white font-bold py-2 rounded-lg">適用</button></div>
+            </div>
+        </div>
+    );
+}
+function GroupSelectionModal({ groups, onClose, onSelect }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">グループを選択</h3></div>
+                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
+                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべてのグループ</button>
+                    {groups.map(group => (<button key={group} onClick={() => onSelect(group)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{group}</button>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+function PriceSelectionModal({ onClose, onSelect }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">料金を選択</h3></div>
+                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
+                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての料金</button>
+                    {priceFilterRanges.map(range => (<button key={range.label} onClick={() => onSelect(range)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{range.label}</button>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function NumberOfPeopleSelectionModal({ onClose, onSelect }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-700 text-center"><h3 className="font-bold text-lg">人数を選択</h3></div>
+                <div className="flex flex-col p-2 max-h-64 overflow-y-auto">
+                    <button onClick={() => onSelect(null)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">すべての人数</button>
+                    {numberOfPeopleOptions.map(option => (<button key={option.label} onClick={() => onSelect(option)} className="w-full text-left p-3 text-lg hover:bg-gray-700 rounded-md">{option.label}</button>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="font-bold text-lg text-center mb-2">{title}</h3>
+                <p className="text-gray-300 text-center mb-6">{message}</p>
+                <div className="flex gap-4">
+                    <button onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">キャンセル</button>
+                    <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">OK</button>
+                </div>
             </div>
         </div>
     );
