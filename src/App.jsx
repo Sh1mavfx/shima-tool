@@ -463,7 +463,7 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath, setShareM
     useEffect(() => {
         fetchCustomers();
     }, [getCustomerCollectionPath]);
-
+    
     const handleCreateShareLink = async (customer) => {
         if (!customer) return;
         try {
@@ -480,7 +480,25 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath, setShareM
             setToast('共有リンクの作成に失敗しました。');
         }
     };
-
+    
+    const copyToClipboard = (text) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed"; 
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try { 
+            document.execCommand('copy'); 
+            setToast('IDをコピーしました！');
+            setTimeout(() => setToast(''), 2000); 
+        } catch (err) { 
+            console.error('Failed to copy: ', err); 
+            setToast('コピーに失敗しました。');
+            setTimeout(() => setToast(''), 2000); 
+        }
+        document.body.removeChild(textArea);
+    };
 
     const handleDeleteCustomer = async () => {
         if (!customerToDelete) return;
@@ -513,8 +531,9 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath, setShareM
                             <p className="text-xs text-gray-400 truncate">ID: {customer.id}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => handleCreateShareLink(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-blue-500"><Share2 className="w-5 h-5" /></button>
-                            <button onClick={() => setCustomerToDelete(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-red-500"><Trash2 className="w-5 h-5" /></button>
+                            <button onClick={() => copyToClipboard(customer.id)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500" title="顧客IDをコピー"><Clipboard className="w-5 h-5" /></button>
+                            <button onClick={() => handleCreateShareLink(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-blue-500" title="共有リンクを作成"><Share2 className="w-5 h-5" /></button>
+                            <button onClick={() => setCustomerToDelete(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-red-500" title="顧客を削除"><Trash2 className="w-5 h-5" /></button>
                         </div>
                     </div>
                 ))}
