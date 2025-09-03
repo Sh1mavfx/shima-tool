@@ -167,7 +167,7 @@ function App() {
             case 'login': return <LoginScreen setError={setError} error={error} />;
             case 'sharedList': return <SharedListScreen shareId={shareId} />;
             case 'customerSelection': return <CustomerSelectionScreen onSelect={loadCustomerData} onCreate={createNewCustomer} onViewAsGuest={viewAsGuest} error={error} today={today} handleLogout={handleLogout} navigateTo={navigateTo} />;
-            case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} navigateTo={navigateTo} />;
+            case 'list': return <StoreListScreen customerData={customerData} setCustomerData={setCustomerData} customerId={customerId} listFilter={listFilter} setListFilter={setListFilter} today={today} getCustomerCollectionPath={getCustomerCollectionPath} navigateTo={navigateTo} isAdmin={isAdmin} />;
             case 'admin': return <AdminScreen navigateTo={navigateTo} isAdmin={isAdmin} />;
             case 'adminCustomers': return <AdminCustomersScreen navigateTo={navigateTo} getCustomerCollectionPath={getCustomerCollectionPath} setShareModalData={setShareModalData} />;
             case 'adminCustomerDetail': return <AdminCustomerDetailScreen customerInfo={selectedAdminCustomer} navigateTo={navigateTo} setShareModalData={setShareModalData}/>;
@@ -241,7 +241,7 @@ function CustomerSelectionScreen({ onSelect, onCreate, onViewAsGuest, error, tod
         </div>
     );
 }
-function StoreListScreen({ customerData, setCustomerData, customerId, listFilter, setListFilter, today, getCustomerCollectionPath, navigateTo }) {
+function StoreListScreen({ customerData, setCustomerData, customerId, listFilter, setListFilter, today, getCustomerCollectionPath, navigateTo, isAdmin }) {
     const [idFilterModalOpen, setIdFilterModalOpen] = useState(false);
     const [groupFilterModalOpen, setGroupFilterModalOpen] = useState(false);
     const [priceFilterModalOpen, setPriceFilterModalOpen] = useState(false);
@@ -373,7 +373,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
                     </div>
                 ))}
             </main>
-            {selectedStore && <StoreDetailScreen store={selectedStore} onClose={() => setSelectedStore(null)} />}
+            {selectedStore && <StoreDetailScreen store={selectedStore} onClose={() => setSelectedStore(null)} isAdmin={isAdmin} navigateTo={navigateTo}/>}
             {statusUpdateModal.isOpen && <StatusUpdateModal onClose={() => setStatusUpdateModal({ isOpen: false, storeId: null })} onUpdate={(newStatus) => {updateStoreStatus(statusUpdateModal.storeId, newStatus); setStatusUpdateModal({isOpen: false, storeId: null})}} />}
             {idFilterModalOpen && <IdSelectionModal currentSelected={selectedIds} onClose={() => setIdFilterModalOpen(false)} onApply={setSelectedIds} />}
             {groupFilterModalOpen && <GroupSelectionModal groups={allGroups} onClose={() => setGroupFilterModalOpen(false)} onSelect={(group) => { setSelectedGroup(group); setGroupFilterModalOpen(false); }} />}
@@ -383,7 +383,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
     );
 }
 
-function StoreDetailScreen({ store, onClose }) {
+function StoreDetailScreen({ store, onClose, isAdmin, navigateTo }) {
     const [showPasswordInput, setShowPasswordInput] = useState(false);
     const [password, setPassword] = useState('');
     const [memo, setMemo] = useState('');
@@ -399,8 +399,27 @@ function StoreDetailScreen({ store, onClose }) {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 overflow-y-auto max-h-full" onClick={(e) => e.stopPropagation()}>
                 {modalMessage && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setModalMessage('')}><div className="bg-gray-800 p-6 rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}><p className="text-white">{modalMessage}</p><button onClick={() => setModalMessage('')} className="mt-4 w-full bg-pink-600 text-white py-2 rounded-lg">閉じる</button></div></div>)}
-                <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
-                <header className="mb-6"><h1 className="text-3xl font-bold">{store.name}</h1><p className="text-gray-400 text-lg">{store.group}</p></header>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-3xl font-bold">{store.name}</h1>
+                        <p className="text-gray-400 text-lg mb-6">{store.group}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {isAdmin && (
+                            <button 
+                                onClick={() => {
+                                    onClose(); 
+                                    navigateTo('adminStoreEdit', store);
+                                }} 
+                                className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"
+                                title="この店舗を編集する"
+                            >
+                                <Edit className="w-5 h-5" />
+                            </button>
+                        )}
+                        <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                    </div>
+                </div>
                 <main className="space-y-6">
                     <div className="bg-gray-700 p-4 rounded-lg"><h3 className="font-bold text-lg mb-2">基本情報</h3><ul className="space-y-2 text-gray-300"><li><strong>営業時間:</strong> {store.openingTime}</li><li><strong>定休日:</strong> {store.closingDay}</li><li><strong>初回時間:</strong> {store.initialTime}分</li><li><strong>初回料金:</strong> {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`}</li><li><strong>人数:</strong> ~{store.numberOfPeople}人</li><li><strong>遅い時間帯可:</strong> {store.lateNightOption}</li><li><strong>属性:</strong> {store.locationType === 'walk' ? '🚶' : '🏠'} {store.contactType === 'phone' ? '📱' : '❌'}</li><li><strong>必須本人確認書類:</strong> {store.requiredIds.join(', ')}</li><li className="flex flex-wrap gap-2 items-center"><strong>タグ:</strong> {store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-600 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</li></ul></div>
                     <div className="grid grid-cols-2 gap-4"><a href={store.hosuhosuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><LinkIcon /> ホスホス</a><a href={store.mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"><MapPin /> 地図</a></div>
@@ -480,7 +499,7 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath, setShareM
             setToast('共有リンクの作成に失敗しました。');
         }
     };
-    
+
     const copyToClipboard = (text) => {
         const textArea = document.createElement("textarea");
         textArea.value = text;
@@ -531,7 +550,7 @@ function AdminCustomersScreen({ navigateTo, getCustomerCollectionPath, setShareM
                             <p className="text-xs text-gray-400 truncate">ID: {customer.id}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => copyToClipboard(customer.id)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500" title="顧客IDをコピー"><Clipboard className="w-5 h-5" /></button>
+                             <button onClick={() => copyToClipboard(customer.id)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500" title="顧客IDをコピー"><Clipboard className="w-5 h-5" /></button>
                             <button onClick={() => handleCreateShareLink(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-blue-500" title="共有リンクを作成"><Share2 className="w-5 h-5" /></button>
                             <button onClick={() => setCustomerToDelete(customer)} className="p-2 bg-gray-700 rounded-full hover:bg-red-500" title="顧客を削除"><Trash2 className="w-5 h-5" /></button>
                         </div>
@@ -1117,9 +1136,9 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
 function ShareModal({ url, onClose }) {
     const [copySuccess, setCopySuccess] = useState('');
 
-    const copyToClipboard = () => {
+    const copyToClipboard = (textToCopy) => {
         const textArea = document.createElement("textarea");
-        textArea.value = url;
+        textArea.value = textToCopy;
         textArea.style.position = "fixed"; 
         textArea.style.left = "-9999px";
         document.body.appendChild(textArea);
@@ -1139,7 +1158,7 @@ function ShareModal({ url, onClose }) {
                 <h3 className="font-bold text-lg text-center mb-4">共有リンク</h3>
                 <div className="flex items-center space-x-2">
                     <input type="text" value={url} readOnly className="w-full p-2 bg-gray-700 rounded-md text-white border border-gray-600" />
-                    <button onClick={copyToClipboard} className="p-2 bg-pink-600 rounded-md hover:bg-pink-700"><Clipboard className="w-5 h-5"/></button>
+                    <button onClick={() => copyToClipboard(url)} className="p-2 bg-pink-600 rounded-md hover:bg-pink-700"><Clipboard className="w-5 h-5"/></button>
                 </div>
                 {copySuccess && <p className="text-center text-green-400 mt-2">{copySuccess}</p>}
                 <button onClick={onClose} className="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">閉じる</button>
