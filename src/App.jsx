@@ -256,14 +256,32 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStore, setSelectedStore] = useState(null);
     const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, storeId: null });
+    const [dailyStatus, setDailyStatus] = useState({});
 
     useEffect(() => {
+        const todayStr = new Date().toLocaleDateString();
+        const lastVisitDate = localStorage.getItem('lastVisitDate');
+        const savedStatus = localStorage.getItem('dailyStatus');
+
+        if (lastVisitDate === todayStr && savedStatus) {
+            setDailyStatus(JSON.parse(savedStatus));
+        } else {
+            localStorage.setItem('lastVisitDate', todayStr);
+            localStorage.removeItem('dailyStatus');
+        }
+
         const fetchStores = async () => {
             const querySnapshot = await getDocs(collection(db, storeCollectionPath));
             setAllStores(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         };
         fetchStores();
     }, []);
+
+    const setStoreDailyStatus = (storeId, status) => {
+        const newStatus = { ...dailyStatus, [storeId]: status };
+        setDailyStatus(newStatus);
+        localStorage.setItem('dailyStatus', JSON.stringify(newStatus));
+    };
 
     const allGroups = useMemo(() => [...new Set(allStores.map(s => s.group) || [])], [allStores]);
 
@@ -310,7 +328,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
         if (selectedNumberOfPeople) stores = stores.filter(s => s.numberOfPeople >= selectedNumberOfPeople.value);
         if (locationTypeFilter) stores = stores.filter(s => s.locationType === locationTypeFilter);
         if (lateNightFilter) stores = stores.filter(s => s.lateNightOption !== '不可');
-
+        
         const activeStores = stores.filter(s => s.closingDay !== today && s.status !== 'unwanted');
         const unwantedStores = stores.filter(s => s.status === 'unwanted');
         const closedStores = stores.filter(s => s.closingDay === today);
@@ -334,6 +352,50 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
         setSearchTerm('');
     };
 
+    const DailyStatusButton = ({ storeId }) => {
+        const [isOpen, setIsOpen] = useState(false);
+        const statuses = {
+            stop: '終日ストップ',
+            closed: '店休',
+            event: 'イベント',
+        };
+
+        const handleClick = (status) => {
+            setStoreDailyStatus(storeId, status);
+            setIsOpen(false);
+        };
+
+        return (
+            <div className="relative">
+                <button onClick={() => setIsOpen(!isOpen)} className="p-1 bg-gray-600 rounded-full">...</button>
+                {isOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg z-20">
+                        {Object.entries(statuses).map(([key, value]) => (
+                            <button key={key} onClick={() => handleClick(key)} className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600">{value}</button>
+                        ))}
+                        <button onClick={() => handleClick(null)} className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600">クリア</button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const DailyStatusLabel = ({ status }) => {
+        if (!status) return null;
+        const statusInfo = {
+            stop: { label: 'STOP', color: 'bg-red-500' },
+            closed: { label: '店休', color: 'bg-yellow-500' },
+            event: { label: 'EVENT', color: 'bg-blue-500' },
+        }[status];
+
+        return (
+            <div className={`absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded ${statusInfo.color}`}>
+                {statusInfo.label}
+            </div>
+        );
+    };
+
+
     return (
         <div className="pb-28">
             <header className="p-4 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-10">
@@ -356,6 +418,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
             <main className="p-4 space-y-3">
                 {filteredStores.map(store => (
                     <div key={store.id} className={`relative bg-gray-800 rounded-lg shadow-lg flex items-center p-4 ${store.status === 'unwanted' ? 'opacity-40' : ''}`}>
+                        <DailyStatusLabel status={dailyStatus[store.id]} />
                         <div className="grow" onClick={() => setSelectedStore(store)}>
                             <div className="flex items-center gap-2">
                                 <h2 className="text-lg font-bold">{store.name}</h2>
@@ -364,6 +427,7 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
                             <p className="text-gray-400 text-sm">{store.group} / {store.openingTime} / {store.initialPriceMin === store.initialPriceMax ? `${store.initialPriceMin}円` : `${store.initialPriceMin}円~${store.initialPriceMax}円`} / ~{store.numberOfPeople}人</p>
                             <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
                         </div>
+                        {isAdmin && <DailyStatusButton storeId={store.id} />}
                         { customerId &&
                             <div className="flex items-center">
                                 <button onClick={() => { setStatusUpdateModal({ isOpen: true, storeId: store.id }) }} className="bg-gray-700 text-white rounded-full p-2 hover:bg-red-500"><X className="w-5 h-5" /></button>
@@ -383,6 +447,156 @@ function StoreListScreen({ customerData, setCustomerData, customerId, listFilter
     );
 }
 
+function AdminStoreEditScreen({ store, navigateTo }) {
+    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialTime: '', closingDay: '', lateNightOption: '不可', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
+    const [hasPriceRange, setHasPriceRange] = useState(false);
+    const [toast, setToast] = useState('');
+
+    useEffect(() => {
+        if (store) {
+            const isRange = store.initialPriceMin !== store.initialPriceMax;
+            setHasPriceRange(isRange);
+            setFormData({ 
+                ...store, 
+                phoneticName: store.phoneticName || '',
+                openingTime: store.openingTime || '',
+                initialTime: store.initialTime || '',
+                closingDay: store.closingDay || '',
+                lateNightOption: store.lateNightOption || '不可',
+                tags: store.tags.join(', '), 
+                requiredIds: store.requiredIds || [],
+                initialPriceMin: store.initialPriceMin || '',
+                initialPriceMax: isRange ? (store.initialPriceMax || '') : '',
+                numberOfPeople: store.numberOfPeople || 1,
+                locationType: store.locationType || 'walk',
+                contactType: store.contactType || 'phone'
+            });
+        }
+    }, [store]);
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    };
+
+    const handleIdChange = (id) => {
+        setFormData(prev => {
+            const newIds = prev.requiredIds.includes(id) ? prev.requiredIds.filter(i => i !== id) : [...prev.requiredIds, id];
+            return { ...prev, requiredIds: newIds };
+        });
+    };
+
+    const handleAttributeChange = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSave = async () => {
+        const minPrice = Number(formData.initialPriceMin) || 0;
+        const maxPrice = hasPriceRange ? (Number(formData.initialPriceMax) || minPrice) : minPrice;
+
+        const dataToSave = {
+            ...formData,
+            initialPriceMin: minPrice,
+            initialPriceMax: maxPrice,
+            initialPriceText: hasPriceRange ? `${minPrice}円~${maxPrice}円` : `${minPrice}円`,
+            tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
+            numberOfPeople: Number(formData.numberOfPeople) || 1,
+            initialTime: Number(formData.initialTime) || 0,
+        };
+        
+        try {
+            if (store) {
+                await setDoc(doc(db, storeCollectionPath, store.id), dataToSave);
+            } else {
+                await addDoc(collection(db, storeCollectionPath), dataToSave);
+            }
+            setToast('保存しました！');
+            setTimeout(() => navigateTo('list'), 1500);
+        } catch (e) {
+            console.error("Error saving store: ", e);
+            setToast('保存に失敗しました。');
+            setTimeout(() => setToast(''), 2000);
+        }
+    };
+    return (
+        <div className="p-4 pb-10">
+            {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
+            <button onClick={() => navigateTo('list')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />店舗一覧に戻る</button>
+            <h1 className="text-2xl font-bold mb-6">{store ? '店舗情報を編集' : '新規店舗を追加'}</h1>
+            <div className="space-y-4">
+                <div><label className="text-sm text-gray-400">店名</label><input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">グループ</label><input type="text" name="group" value={formData.group} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">読み仮名 / 通称</label><input type="text" name="phoneticName" value={formData.phoneticName} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">営業時間</label><input type="text" name="openingTime" value={formData.openingTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">初回時間 (分)</label><input type="number" name="initialTime" value={formData.initialTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">定休日</label><input type="text" name="closingDay" value={formData.closingDay} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                
+                <div>
+                    <label className="text-sm text-gray-400">遅い時間帯可</label>
+                    <div className="flex gap-2 mt-1">
+                        {lateNightOptions.map(option => (
+                            <button key={option.value} onClick={() => handleAttributeChange('lateNightOption', option.value)} className={`px-4 py-2 rounded-full text-sm ${formData.lateNightOption === option.value ? 'bg-pink-500' : 'bg-gray-700'}`}>{option.label}</button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="flex items-center gap-2 text-sm text-gray-400">
+                        <input type="checkbox" checked={hasPriceRange} onChange={(e) => setHasPriceRange(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
+                        <span>料金に差がある</span>
+                    </label>
+                </div>
+
+                {hasPriceRange ? (
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="text-sm text-gray-400">最低料金 (円)</label><input type="number" name="initialPriceMin" value={formData.initialPriceMin} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                        <div><label className="text-sm text-gray-400">最高料金 (円)</label><input type="number" name="initialPriceMax" value={formData.initialPriceMax} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                    </div>
+                ) : (
+                    <div><label className="text-sm text-gray-400">初回料金 (円)</label><input type="number" name="initialPriceMin" value={formData.initialPriceMin} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                )}
+
+                <div><label className="text-sm text-gray-400">バック料金</label><input type="text" name="backCharge" value={formData.backCharge} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">タグ (カンマ区切り)</label><input type="text" name="tags" value={formData.tags} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div>
+                    <label className="text-sm text-gray-400">人数</label>
+                    <select name="numberOfPeople" value={formData.numberOfPeople} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1">
+                        {numberOfPeopleOptions.map(option => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-sm text-gray-400">属性</label>
+                    <div className="flex gap-2 mt-1">
+                        <button onClick={() => handleAttributeChange('locationType', 'walk')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'walk' ? 'bg-pink-500' : 'bg-gray-700'}`}>🚶</button>
+                        <button onClick={() => handleAttributeChange('locationType', 'house')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'house' ? 'bg-pink-500' : 'bg-gray-700'}`}>🏠</button>
+                    </div>
+                    <div className="flex gap-2 mt-1">
+                        <button onClick={() => handleAttributeChange('contactType', 'phone')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'phone' ? 'bg-pink-500' : 'bg-gray-700'}`}>📱</button>
+                        <button onClick={() => handleAttributeChange('contactType', 'none')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'none' ? 'bg-pink-500' : 'bg-gray-700'}`}>❌</button>
+                    </div>
+                </div>
+                <div>
+                    <label className="text-sm text-gray-400">必須身分証</label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                        {idTypes.map(id => (
+                            <label key={id} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md">
+                                <input type="checkbox" checked={formData.requiredIds.includes(id)} onChange={() => handleIdChange(id)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
+                                <span>{id}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+                <div><label className="text-sm text-gray-400">ホスホスURL</label><input type="url" name="hosuhosuUrl" value={formData.hosuhosuUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">地図URL</label><input type="url" name="mapUrl" value={formData.mapUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
+                <div><label className="text-sm text-gray-400">スタッフ専用メモ</label><textarea name="staffMemo" value={formData.staffMemo} onChange={handleChange} className="w-full h-24 p-2 bg-gray-800 rounded-md mt-1"></textarea></div>
+                <button onClick={handleSave} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">保存する</button>
+            </div>
+        </div>
+    );
+}
+
+// ... Rest of the components are unchanged
 function StoreDetailScreen({ store, onClose, isAdmin, navigateTo }) {
     const [showPasswordInput, setShowPasswordInput] = useState(false);
     const [password, setPassword] = useState('');
@@ -824,156 +1038,6 @@ function AdminStoresScreen({ navigateTo }) {
         </div>
     );
 }
-function AdminStoreEditScreen({ store, navigateTo }) {
-    const [formData, setFormData] = useState({ name: '', group: '', phoneticName: '', openingTime: '', initialTime: '', closingDay: '', lateNightOption: '不可', initialPriceMin: '', initialPriceMax: '', backCharge: '', tags: '', requiredIds: [], hosuhosuUrl: '', mapUrl: '', staffMemo: '', numberOfPeople: 1, locationType: 'walk', contactType: 'phone' });
-    const [hasPriceRange, setHasPriceRange] = useState(false);
-    const [toast, setToast] = useState('');
-
-    useEffect(() => {
-        if (store) {
-            const isRange = store.initialPriceMin !== store.initialPriceMax;
-            setHasPriceRange(isRange);
-            setFormData({ 
-                ...store, 
-                phoneticName: store.phoneticName || '',
-                openingTime: store.openingTime || '',
-                initialTime: store.initialTime || '',
-                closingDay: store.closingDay || '',
-                lateNightOption: store.lateNightOption || '不可',
-                tags: store.tags.join(', '), 
-                requiredIds: store.requiredIds || [],
-                initialPriceMin: store.initialPriceMin || '',
-                initialPriceMax: isRange ? (store.initialPriceMax || '') : '',
-                numberOfPeople: store.numberOfPeople || 1,
-                locationType: store.locationType || 'walk',
-                contactType: store.contactType || 'phone'
-            });
-        }
-    }, [store]);
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    };
-
-    const handleIdChange = (id) => {
-        setFormData(prev => {
-            const newIds = prev.requiredIds.includes(id) ? prev.filter(i => i !== id) : [...prev.requiredIds, id];
-            return { ...prev, requiredIds: newIds };
-        });
-    };
-
-    const handleAttributeChange = (name, value) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSave = async () => {
-        const minPrice = Number(formData.initialPriceMin) || 0;
-        const maxPrice = hasPriceRange ? (Number(formData.initialPriceMax) || minPrice) : minPrice;
-
-        const dataToSave = {
-            ...formData,
-            initialPriceMin: minPrice,
-            initialPriceMax: maxPrice,
-            initialPriceText: hasPriceRange ? `${minPrice}円~${maxPrice}円` : `${minPrice}円`,
-            tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
-            numberOfPeople: Number(formData.numberOfPeople) || 1,
-            initialTime: Number(formData.initialTime) || 0
-        };
-        
-        try {
-            if (store) {
-                await setDoc(doc(db, storeCollectionPath, store.id), dataToSave);
-            } else {
-                await addDoc(collection(db, storeCollectionPath), dataToSave);
-            }
-            setToast('保存しました！');
-            setTimeout(() => navigateTo('adminStores'), 1500);
-        } catch (e) {
-            console.error("Error saving store: ", e);
-            setToast('保存に失敗しました。');
-            setTimeout(() => setToast(''), 2000);
-        }
-    };
-
-    return (
-        <div className="p-4 pb-10">
-            {toast && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">{toast}</div>}
-            <button onClick={() => navigateTo('adminStores')} className="flex items-center gap-2 mb-4 text-pink-400"><ArrowLeft />店舗管理に戻る</button>
-            <h1 className="text-2xl font-bold mb-6">{store ? '店舗情報を編集' : '新規店舗を追加'}</h1>
-            <div className="space-y-4">
-                <div><label className="text-sm text-gray-400">店名</label><input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">グループ</label><input type="text" name="group" value={formData.group} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">読み仮名 / 通称</label><input type="text" name="phoneticName" value={formData.phoneticName} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">営業時間</label><input type="text" name="openingTime" value={formData.openingTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">初回時間 (分)</label><input type="number" name="initialTime" value={formData.initialTime} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">定休日</label><input type="text" name="closingDay" value={formData.closingDay} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                
-                <div>
-                    <label className="text-sm text-gray-400">遅い時間帯可</label>
-                    <div className="flex gap-2 mt-1">
-                        {lateNightOptions.map(option => (
-                            <button key={option.value} onClick={() => handleAttributeChange('lateNightOption', option.value)} className={`px-4 py-2 rounded-full text-sm ${formData.lateNightOption === option.value ? 'bg-pink-500' : 'bg-gray-700'}`}>{option.label}</button>
-                        ))}
-                    </div>
-                </div>
-
-                <div>
-                    <label className="flex items-center gap-2 text-sm text-gray-400">
-                        <input type="checkbox" checked={hasPriceRange} onChange={(e) => setHasPriceRange(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
-                        <span>料金に差がある</span>
-                    </label>
-                </div>
-
-                {hasPriceRange ? (
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-sm text-gray-400">最低料金 (円)</label><input type="number" name="initialPriceMin" value={formData.initialPriceMin} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                        <div><label className="text-sm text-gray-400">最高料金 (円)</label><input type="number" name="initialPriceMax" value={formData.initialPriceMax} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                    </div>
-                ) : (
-                    <div><label className="text-sm text-gray-400">初回料金 (円)</label><input type="number" name="initialPriceMin" value={formData.initialPriceMin} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                )}
-
-                <div><label className="text-sm text-gray-400">バック料金</label><input type="text" name="backCharge" value={formData.backCharge} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">タグ (カンマ区切り)</label><input type="text" name="tags" value={formData.tags} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div>
-                    <label className="text-sm text-gray-400">人数</label>
-                    <select name="numberOfPeople" value={formData.numberOfPeople} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1">
-                        {numberOfPeopleOptions.map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-sm text-gray-400">属性</label>
-                    <div className="flex gap-2 mt-1">
-                        <button onClick={() => handleAttributeChange('locationType', 'walk')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'walk' ? 'bg-pink-500' : 'bg-gray-700'}`}>🚶</button>
-                        <button onClick={() => handleAttributeChange('locationType', 'house')} className={`px-4 py-2 rounded-full text-sm ${formData.locationType === 'house' ? 'bg-pink-500' : 'bg-gray-700'}`}>🏠</button>
-                    </div>
-                    <div className="flex gap-2 mt-1">
-                        <button onClick={() => handleAttributeChange('contactType', 'phone')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'phone' ? 'bg-pink-500' : 'bg-gray-700'}`}>📱</button>
-                        <button onClick={() => handleAttributeChange('contactType', 'none')} className={`px-4 py-2 rounded-full text-sm ${formData.contactType === 'none' ? 'bg-pink-500' : 'bg-gray-700'}`}>❌</button>
-                    </div>
-                </div>
-                <div>
-                    <label className="text-sm text-gray-400">必須身分証</label>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                        {idTypes.map(id => (
-                            <label key={id} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md">
-                                <input type="checkbox" checked={formData.requiredIds.includes(id)} onChange={() => handleIdChange(id)} className="form-checkbox bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500"/>
-                                <span>{id}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-                <div><label className="text-sm text-gray-400">ホスホスURL</label><input type="url" name="hosuhosuUrl" value={formData.hosuhosuUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">地図URL</label><input type="url" name="mapUrl" value={formData.mapUrl} onChange={handleChange} className="w-full p-2 bg-gray-800 rounded-md mt-1" /></div>
-                <div><label className="text-sm text-gray-400">スタッフ専用メモ</label><textarea name="staffMemo" value={formData.staffMemo} onChange={handleChange} className="w-full h-24 p-2 bg-gray-800 rounded-md mt-1"></textarea></div>
-                <button onClick={handleSave} className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">保存する</button>
-            </div>
-        </div>
-    );
-}
 
 function SharedListScreen({ shareId }) {
     const [sharedData, setSharedData] = useState(null);
@@ -1167,4 +1231,3 @@ function ShareModal({ url, onClose }) {
     );
 }
 export default App;
-
