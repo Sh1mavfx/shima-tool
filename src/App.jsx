@@ -596,6 +596,67 @@ function AdminStoreEditScreen({ store, navigateTo }) {
     );
 }
 
+function SharedListScreen({ shareId }) {
+    const [stores, setStores] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [customerName, setCustomerName] = useState('');
+
+    useEffect(() => {
+        if (!shareId) return;
+
+        const shareDocRef = doc(db, sharedListsCollectionPath, shareId);
+        
+        const unsubscribe = onSnapshot(shareDocRef, async (shareSnap) => {
+            if (shareSnap.exists()) {
+                const shareData = shareSnap.data();
+                setCustomerName(shareData.nickname);
+
+                const customerDocRef = doc(db, shareData.customerPath);
+                onSnapshot(customerDocRef, async (customerSnap) => {
+                    if (customerSnap.exists()) {
+                         const customerData = customerSnap.data();
+                         const visitedStoreIds = customerData.storeStatuses
+                            .filter(s => s.status === 'visited')
+                            .map(s => s.storeId);
+                        
+                        if (visitedStoreIds.length > 0) {
+                            const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', visitedStoreIds));
+                            const querySnapshot = await getDocs(storesQuery);
+                            const storesData = querySnapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                            setStores(storesData);
+                        } else {
+                            setStores([]);
+                        }
+                    }
+                     setLoading(false);
+                });
+            } else {
+                setLoading(false);
+            }
+        });
+
+        return () => unsubscribe();
+
+    }, [shareId]);
+
+    if (loading) return <div className="text-center p-10">読み込み中...</div>;
+    if (!customerName) return <div className="text-center p-10">共有リストが見つかりません。</div>;
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold text-center mb-6">{customerName}さんの行ったお店リスト</h1>
+            <div className="bg-gray-800 rounded-lg p-4">
+                <ul className="space-y-3">
+                    {stores.length > 0 ? stores.map(store => (
+                        <li key={store.id} className="text-lg border-b border-gray-700 pb-2">
+                           {store.name}
+                        </li>
+                    )) : <p className="text-center text-gray-400">まだ行ったお店はありません。</p>}
+                </ul>
+            </div>
+        </div>
+    );
+}
 // ... Rest of the components are unchanged
 function StoreDetailScreen({ store, onClose, isAdmin, navigateTo }) {
     const [showPasswordInput, setShowPasswordInput] = useState(false);
@@ -1039,68 +1100,6 @@ function AdminStoresScreen({ navigateTo }) {
     );
 }
 
-function SharedListScreen({ shareId }) {
-    const [sharedData, setSharedData] = useState(null);
-    const [stores, setStores] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [customerName, setCustomerName] = useState('');
-
-    useEffect(() => {
-        if (!shareId) return;
-
-        const shareDocRef = doc(db, sharedListsCollectionPath, shareId);
-        
-        const unsubscribe = onSnapshot(shareDocRef, async (shareSnap) => {
-            if (shareSnap.exists()) {
-                const shareData = shareSnap.data();
-                setCustomerName(shareData.nickname);
-
-                const customerDocRef = doc(db, shareData.customerPath);
-                onSnapshot(customerDocRef, async (customerSnap) => {
-                    if (customerSnap.exists()) {
-                         const customerData = customerSnap.data();
-                         const visitedStoreIds = customerData.storeStatuses
-                            .filter(s => s.status === 'visited')
-                            .map(s => s.storeId);
-                        
-                        if (visitedStoreIds.length > 0) {
-                            const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', visitedStoreIds));
-                            const querySnapshot = await getDocs(storesQuery);
-                            const storesData = querySnapshot.docs.map(d => ({id: d.id, ...d.data()}));
-                            setStores(storesData);
-                        } else {
-                            setStores([]);
-                        }
-                    }
-                     setLoading(false);
-                });
-            } else {
-                setLoading(false);
-            }
-        });
-
-        return () => unsubscribe();
-
-    }, [shareId]);
-
-    if (loading) return <div className="text-center p-10">読み込み中...</div>;
-    if (!customerName) return <div className="text-center p-10">共有リストが見つかりません。</div>;
-
-    return (
-        <div className="p-4">
-            <h1 className="text-2xl font-bold text-center mb-6">{customerName}さんの行ったお店リスト</h1>
-            <div className="space-y-3">
-                 {stores.length > 0 ? stores.map(store => (
-                    <div key={store.id} className="bg-gray-800 rounded-lg p-4">
-                        <h2 className="text-lg font-bold">{store.name}</h2>
-                        <p className="text-sm text-gray-400">{store.group}</p>
-                        <div className="flex flex-wrap gap-2 mt-2">{store.tags.map(tag => (<span key={tag} className="text-xs bg-gray-700 text-pink-300 px-2 py-1 rounded-full">{tag}</span>))}</div>
-                    </div>
-                )) : <p className="text-center text-gray-400">まだ行ったお店はありません。</p>}
-            </div>
-        </div>
-    );
-}
 // --- Modals and Bottom Nav ---
 function BottomNavBar({ currentFilter, setFilter, onLogout }) {
     return (
