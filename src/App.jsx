@@ -595,65 +595,62 @@ function AdminStoreEditScreen({ store, navigateTo }) {
         </div>
     );
 }
-
-function SharedListScreen({ shareId }) {
+function AdminStoresScreen({ navigateTo }) {
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [customerName, setCustomerName] = useState('');
+    const [storeToDelete, setStoreToDelete] = useState(null);
+
+    const fetchStores = async () => {
+        const querySnapshot = await getDocs(collection(db, storeCollectionPath));
+        const fetchedStores = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        fetchedStores.sort((a, b) => a.name.localeCompare(b.name));
+        setStores(fetchedStores);
+        setLoading(false);
+    };
 
     useEffect(() => {
-        if (!shareId) return;
+        fetchStores();
+    }, []);
 
-        const shareDocRef = doc(db, sharedListsCollectionPath, shareId);
-        
-        const unsubscribe = onSnapshot(shareDocRef, async (shareSnap) => {
-            if (shareSnap.exists()) {
-                const shareData = shareSnap.data();
-                setCustomerName(shareData.nickname);
+    const handleDelete = async () => {
+        if (!storeToDelete) return;
+        try {
+            await deleteDoc(doc(db, storeCollectionPath, storeToDelete.id));
+            setStoreToDelete(null);
+            fetchStores(); 
+        } catch (error) {
+            console.error("Error deleting store: ", error);
+        }
+    };
 
-                const customerDocRef = doc(db, shareData.customerPath);
-                onSnapshot(customerDocRef, async (customerSnap) => {
-                    if (customerSnap.exists()) {
-                         const customerData = customerSnap.data();
-                         const visitedStoreIds = customerData.storeStatuses
-                            .filter(s => s.status === 'visited')
-                            .map(s => s.storeId);
-                        
-                        if (visitedStoreIds.length > 0) {
-                            const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', visitedStoreIds));
-                            const querySnapshot = await getDocs(storesQuery);
-                            const storesData = querySnapshot.docs.map(d => ({id: d.id, ...d.data()}));
-                            setStores(storesData);
-                        } else {
-                            setStores([]);
-                        }
-                    }
-                     setLoading(false);
-                });
-            } else {
-                setLoading(false);
-            }
-        });
-
-        return () => unsubscribe();
-
-    }, [shareId]);
-
-    if (loading) return <div className="text-center p-10">読み込み中...</div>;
-    if (!customerName) return <div className="text-center p-10">共有リストが見つかりません。</div>;
+    if (loading) return <div className="p-4 text-center">店舗情報を読み込み中...</div>;
 
     return (
         <div className="p-4">
-            <h1 className="text-2xl font-bold text-center mb-6">{customerName}さんの行ったお店リスト</h1>
-            <div className="bg-gray-800 rounded-lg p-4">
-                <ul className="space-y-3">
-                    {stores.length > 0 ? stores.map(store => (
-                        <li key={store.id} className="text-lg border-b border-gray-700 pb-2">
-                           {store.name}
-                        </li>
-                    )) : <p className="text-center text-gray-400">まだ行ったお店はありません。</p>}
-                </ul>
+            <div className="flex justify-between items-center mb-6">
+                <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-pink-400"><ArrowLeft />管理メニュー</button>
+                <h1 className="text-2xl font-bold">店舗管理</h1>
+                <div className="w-16"></div>
             </div>
+            <button onClick={() => navigateTo('adminStoreEdit', null)} className="w-full mb-4 flex items-center justify-center gap-2 p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700"><PlusCircle/>新規店舗を追加</button>
+            <div className="space-y-3">
+                {stores.map(store => (
+                    <div key={store.id} className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                        <div><p className="font-bold">{store.name}</p><p className="text-xs text-gray-400">{store.group}</p></div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => navigateTo('adminStoreEdit', store)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Edit className="w-5 h-5" /></button>
+                            <button onClick={() => setStoreToDelete(store)} className="p-2 bg-gray-700 rounded-full hover:bg-red-500"><Trash2 className="w-5 h-5" /></button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <ConfirmationModal
+                isOpen={!!storeToDelete}
+                onClose={() => setStoreToDelete(null)}
+                onConfirm={handleDelete}
+                title="店舗の削除"
+                message={`本当に「${storeToDelete?.name}」を削除しますか？`}
+            />
         </div>
     );
 }
@@ -1064,42 +1061,67 @@ function AdminStaffManagementScreen({ navigateTo }) {
     );
 }
 
-function AdminStoresScreen({ navigateTo }) {
+function SharedListScreen({ shareId }) {
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
-    useEffect(() => {
-	const fetchStores = async () => {
-	  const querySnapshot = await getDocs(collection(db, storeCollectionPath));
-	  const fetchedStores = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-	  fetchedStores.sort((a, b) => a.name.localeCompare(b.name));
-	  setStores(fetchedStores);
-	  setLoading(false);
-	};
-	fetchStores();
-    }, []);
+    const [customerName, setCustomerName] = useState('');
 
-    if (loading) return <div className="p-4 text-center">店舗情報を読み込み中...</div>;
+    useEffect(() => {
+        if (!shareId) return;
+
+        const shareDocRef = doc(db, sharedListsCollectionPath, shareId);
+        
+        const unsubscribe = onSnapshot(shareDocRef, async (shareSnap) => {
+            if (shareSnap.exists()) {
+                const shareData = shareSnap.data();
+                setCustomerName(shareData.nickname);
+
+                const customerDocRef = doc(db, shareData.customerPath);
+                onSnapshot(customerDocRef, async (customerSnap) => {
+                    if (customerSnap.exists()) {
+                         const customerData = customerSnap.data();
+                         const visitedStoreIds = customerData.storeStatuses
+                            .filter(s => s.status === 'visited')
+                            .map(s => s.storeId);
+                        
+                        if (visitedStoreIds.length > 0) {
+                            const storesQuery = query(collection(db, storeCollectionPath), where('__name__', 'in', visitedStoreIds));
+                            const querySnapshot = await getDocs(storesQuery);
+                            const storesData = querySnapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                            setStores(storesData);
+                        } else {
+                            setStores([]);
+                        }
+                    }
+                     setLoading(false);
+                });
+            } else {
+                setLoading(false);
+            }
+        });
+
+        return () => unsubscribe();
+
+    }, [shareId]);
+
+    if (loading) return <div className="text-center p-10">読み込み中...</div>;
+    if (!customerName) return <div className="text-center p-10">共有リストが見つかりません。</div>;
 
     return (
         <div className="p-4">
-            <div className="flex justify-between items-center mb-6">
-                <button onClick={() => navigateTo('admin')} className="flex items-center gap-2 text-pink-400"><ArrowLeft />管理メニュー</button>
-                <h1 className="text-2xl font-bold">店舗管理</h1>
-                <div className="w-16"></div>
-            </div>
-            <button onClick={() => navigateTo('adminStoreEdit', null)} className="w-full mb-4 flex items-center justify-center gap-2 p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700"><PlusCircle/>新規店舗を追加</button>
-            <div className="space-y-3">
-                {stores.map(store => (
-                    <div key={store.id} className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
-                        <div><p className="font-bold">{store.name}</p><p className="text-xs text-gray-400">{store.group}</p></div>
-                        <button onClick={() => navigateTo('adminStoreEdit', store)} className="p-2 bg-gray-700 rounded-full hover:bg-pink-500"><Edit className="w-5 h-5" /></button>
-                    </div>
-                ))}
+            <h1 className="text-2xl font-bold text-center mb-6">{customerName}さんの行ったお店リスト</h1>
+            <div className="bg-gray-800 rounded-lg p-4">
+                <ul className="space-y-3">
+                    {stores.length > 0 ? stores.map(store => (
+                        <li key={store.id} className="text-lg border-b border-gray-700 pb-2">
+                           {store.name}
+                        </li>
+                    )) : <p className="text-center text-gray-400">まだ行ったお店はありません。</p>}
+                </ul>
             </div>
         </div>
     );
 }
-
 // --- Modals and Bottom Nav ---
 function BottomNavBar({ currentFilter, setFilter, onLogout }) {
     return (
